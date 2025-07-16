@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đang chuyển hướng...</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding-top: 50px; }
+    </style>
+</head>
+<body>
+    <p>Vui lòng chờ trong giây lát, đang chuyển hướng đến ứng dụng...</p>
+    <script>
+        const targetAppscriptUrl = "https://script.google.com/macros/s/AKfycbwQP44qZ8yvEIN9vP-V9f2qCV1GRyeLaEiB_GY9sz49s8Ua4AxnFg6na5jTFfWGvA--/exec";
+
+        // Lấy toàn bộ chuỗi tham số từ URL hiện tại (ví dụ: "?name=John&age=30")
+        const queryString = window.location.search;
+
+        // Tạo URL cuối cùng bằng cách ghép link AppScript với chuỗi tham số
+        const finalUrl = targetAppscriptUrl + queryString;
+
+        // Thực hiện chuyển hướng. 
+        // Dùng replace() để người dùng không thể bấm "Back" quay lại trang này
+        window.location.replace(finalUrl);
+    </script>
+</body>
+</html>
