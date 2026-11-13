@@ -366,7 +366,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 no-scrollbar">
           {successCount !== null ? (
             <div className="py-8 text-center space-y-3 max-w-md mx-auto">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
@@ -469,7 +469,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                   </div>
 
                   {/* Table */}
-                  <div className="max-h-[42vh] overflow-auto">
+                  <div className="max-h-[42vh] overflow-auto no-scrollbar">
                     <table className="w-full text-xs text-left border-collapse">
                       <thead className="bg-slate-100 text-slate-800 sticky top-0 z-10">
                         <tr>

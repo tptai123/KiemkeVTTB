@@ -11,3 +11,28 @@ html, body {
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Ẩn thanh cuộn lên xuống (vertical scrollbar) trên toàn bộ trang nhưng vẫn giữ chức năng cuộn mượt */
+::-webkit-scrollbar:vertical {
+  width: 0px !important;
+  display: none !important;
+}
+
+/* Ẩn thanh cuộn cho các container cuộn dọc (Chrome, Safari, Edge, Firefox) */
+.overflow-y-auto,
+.overflow-y-scroll,
+.overflow-auto,
+.no-scrollbar,
+.hide-scrollbar {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE/Edge */
+}
+
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-y-scroll::-webkit-scrollbar,
+.overflow-auto::-webkit-scrollbar:vertical,
+.no-scrollbar::-webkit-scrollbar,
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+}

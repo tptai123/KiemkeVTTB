@@ -139,6 +139,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   const [isProposalMenuOpen, setIsProposalMenuOpen] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [initialSnapshot, setInitialSnapshot] = useState('');
   const [error, setError] = useState('');
 
@@ -199,6 +200,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     setIsProposalMenuOpen(false);
     setSelectedImageFile(null);
     setIsSubmitting(false);
+    setHasSubmitted(false);
     setError('');
   }, [editingItem, isOpen]);
 
@@ -218,6 +220,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     selectedImageFile !== null ||
     (initialSnapshot !== '' && JSON.stringify(formData) !== initialSnapshot);
   const isActualQtyMissing = !formData.notFound && formData.actualQtyStr.trim() === '';
+  const showActualQtyError = hasSubmitted && isActualQtyMissing;
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -247,6 +250,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       return;
     }
     if (isActualQtyMissing) {
+      setHasSubmitted(true);
       setError('Vui lòng nhập SL kiểm kê hoặc tích chọn "Không tìm thấy vật tư".');
       return;
     }
@@ -329,7 +333,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1">
+        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1 no-scrollbar">
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -370,39 +374,43 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             </div>
 
             {/* Cột phải: Hình ảnh (chiều cao bằng 2 trường Mã vật tư + Tên vật tư) */}
-            <div className="w-full sm:w-56 shrink-0 flex flex-col">
+            <div className="w-full sm:w-60 shrink-0 flex flex-col">
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Hình ảnh vật tư
               </label>
-              <div className="flex-1 min-h-[120px] rounded-xl border border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center relative overflow-hidden p-2">
-                {formData.image ? (
-                  <>
-                    <img
-                      src={formData.image}
-                      alt={formData.name}
-                      className="max-h-16 w-full object-contain rounded"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData((prev) => ({ ...prev, image: '' }));
-                        setSelectedImageFile(null);
-                      }}
-                      title="Xóa hình ảnh"
-                      className="absolute top-1.5 right-1.5 p-1 bg-white/90 hover:bg-red-50 text-red-600 rounded-lg border border-slate-200 shadow-2xs"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-xs text-slate-400 mb-1.5">Chưa có hình ảnh</span>
-                )}
+              <div className="flex-1 min-h-[140px] rounded-xl border border-dashed border-slate-300 bg-slate-50 flex flex-col justify-between relative overflow-hidden">
+                {/* Khung hiển thị hình ảnh - to hơn và vừa vặn */}
+                <div className="flex-1 w-full flex items-center justify-center p-2 relative min-h-[92px]">
+                  {formData.image ? (
+                    <div className="relative w-full h-full flex items-center justify-center">
+                      <img
+                        src={formData.image}
+                        alt={formData.name}
+                        className="max-h-24 sm:max-h-28 w-auto max-w-full object-contain rounded"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData((prev) => ({ ...prev, image: '' }));
+                          setSelectedImageFile(null);
+                        }}
+                        title="Xóa hình ảnh"
+                        className="absolute top-0 right-0 p-1 bg-white/95 hover:bg-red-50 text-red-600 rounded-lg border border-slate-200 shadow-2xs"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400">Chưa có hình ảnh</span>
+                  )}
+                </div>
 
-                <div className="flex items-center gap-1.5 mt-1.5">
+                {/* 2 nút button Tải ảnh, Chụp ảnh nằm sát với khung viền dưới */}
+                <div className="w-full bg-slate-100/90 border-t border-slate-200 p-1.5 flex items-center justify-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-2 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                    className="flex-1 py-1 px-1.5 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 shadow-2xs transition-colors"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     <span>Tải ảnh</span>
@@ -410,7 +418,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                   <button
                     type="button"
                     onClick={() => cameraInputRef.current?.click()}
-                    className="px-2 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                    className="flex-1 py-1 px-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 shadow-2xs transition-colors"
                   >
                     <Camera className="w-3.5 h-3.5" />
                     <span>Chụp ảnh</span>
@@ -467,7 +475,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                SL kiểm kê {!formData.notFound && <span className="text-red-600">*</span>}
+                SL kiểm kê {!formData.notFound && <span className="text-red-500">*</span>}
               </label>
               <input
                 type="text"
@@ -476,16 +484,19 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 onChange={(e) => {
                   const formatted = formatVNInputLive(e.target.value);
                   setFormData({ ...formData, actualQtyStr: formatted });
-                  if (formatted.trim() !== '') setError('');
+                  if (formatted.trim() !== '') {
+                    setHasSubmitted(false);
+                    setError('');
+                  }
                 }}
                 placeholder="VD: 1.250,5"
                 className={`w-full px-3 py-2 rounded-xl border bg-white focus:ring-2 text-sm font-semibold text-right text-blue-700 ${
-                  isActualQtyMissing
+                  showActualQtyError
                     ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
                     : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
                 }`}
               />
-              {isActualQtyMissing && (
+              {showActualQtyError && (
                 <p className="mt-1 text-[11px] font-medium text-red-600">
                   Bắt buộc nhập SL kiểm kê
                 </p>
@@ -684,7 +695,10 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 onChange={(e) => {
                   const checked = e.target.checked;
                   setFormData({ ...formData, notFound: checked });
-                  if (checked) setError('');
+                  if (checked) {
+                    setHasSubmitted(false);
+                    setError('');
+                  }
                 }}
                 className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
               />

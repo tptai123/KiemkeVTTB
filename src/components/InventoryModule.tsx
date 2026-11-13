@@ -417,7 +417,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   )}
                 </div>
 
-                <div className="max-h-48 overflow-y-auto space-y-1 pt-1">
+                <div className="max-h-48 overflow-y-auto space-y-1 pt-1 no-scrollbar">
                   <div
                     onClick={() => setSelectedLocations([])}
                     className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px] cursor-pointer ${
@@ -515,7 +515,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   )}
                 </div>
 
-                <div className="max-h-48 overflow-y-auto space-y-1 pt-1">
+                <div className="max-h-48 overflow-y-auto space-y-1 pt-1 no-scrollbar">
                   <div
                     onClick={() => setSelectedProposals([])}
                     className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px] cursor-pointer ${
@@ -574,7 +574,11 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
 
       {/* Data Table: Phủ phần diện tích còn lại, không tạo thanh cuộn dọc cho form giao diện module */}
       <div className="bg-white rounded-xl shadow-2xs border border-slate-200 flex-1 min-h-0 overflow-hidden flex flex-col text-[14px]">
-        <div className="overflow-x-auto overflow-y-auto flex-1" ref={tableContainerRef}>
+        <div
+          className="overflow-x-auto overflow-y-auto flex-1 no-scrollbar"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          ref={tableContainerRef}
+        >
           <table className="w-full border-collapse border border-slate-200 text-[14px]">
             <thead>
               <tr className="sticky top-0 z-10 bg-slate-100 shadow-xs text-[14px]">
