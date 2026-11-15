@@ -189,6 +189,7 @@ export const INITIAL_SURPLUS_ITEMS: SurplusItem[] = [
     location: 'Kho A - Tầng 1 (Kệ IT)',
     reason: 'Mua dự phòng cho dự án mạng năm ngoái còn dư',
     notes: 'Nguyên đai nguyên kiện, chưa qua sử dụng',
+    image: '/images/cisco.svg',
     createdAt: '2026-11-05',
   },
   {
@@ -203,6 +204,7 @@ export const INITIAL_SURPLUS_ITEMS: SurplusItem[] = [
     location: 'Kho B - Tầng hầm',
     reason: 'Thu hồi từ phòng họp cũ sau khi nâng cấp',
     notes: 'Chân inox hơi xước nhẹ, đệm mút còn tốt',
+    image: '/images/chair.svg',
     createdAt: '2026-11-06',
   },
   {
@@ -217,6 +219,7 @@ export const INITIAL_SURPLUS_ITEMS: SurplusItem[] = [
     location: 'Phòng Kế toán - Tủ thiết bị',
     reason: 'Chuyển đổi hình thức thanh toán không tiền mặt',
     notes: 'Hoạt động tốt, đầy đủ phụ kiện',
+    image: '/images/printer.svg',
     createdAt: '2026-11-07',
   },
   {
@@ -231,6 +234,7 @@ export const INITIAL_SURPLUS_ITEMS: SurplusItem[] = [
     location: 'Kho vật tư xưởng',
     reason: 'Cấp phát dư theo định suất kỹ thuật',
     notes: 'Chưa bóc tem hộp',
+    image: '/images/drill.svg',
     createdAt: '2026-11-08',
   },
 ];

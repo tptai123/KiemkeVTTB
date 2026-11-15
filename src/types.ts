@@ -52,6 +52,7 @@ export interface SurplusItem {
   location: string;
   reason: string;
   notes: string;
+  image?: string;
   createdAt: string;
 }
 

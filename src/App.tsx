@@ -587,29 +587,55 @@ export default function App() {
   };
 
   // --- SURPLUS HANDLERS ---
-  const handleSaveSurplus = (itemData: Partial<SurplusItem>) => {
+  const handleSaveSurplus = async (
+    itemData: Partial<SurplusItem>,
+    imageFile?: File | null
+  ) => {
+    let resolvedImage = itemData.image;
+    const itemCodeForFile = editingSurItem
+      ? editingSurItem.code
+      : itemData.code || `SD-${Date.now()}`;
+
+    if (isSupabaseConnected && imageFile) {
+      try {
+        resolvedImage = await uploadInventoryImageToSupabase(imageFile, itemCodeForFile);
+      } catch (err) {
+        console.warn('Storage upload error for surplus image:', err);
+      }
+    }
+
+    const payloadToSave: Partial<SurplusItem> = {
+      ...itemData,
+      image: resolvedImage,
+    };
+
     if (editingSurItem) {
       setSurplusItems((prev) =>
-        prev.map((item) => (item.id === editingSurItem.id ? ({ ...item, ...itemData } as SurplusItem) : item))
+        prev.map((item) =>
+          item.id === editingSurItem.id
+            ? ({ ...item, ...payloadToSave } as SurplusItem)
+            : item
+        )
       );
-      showToast(`Đã cập nhật hàng dư ${itemData.code}`);
+      showToast(`Đã cập nhật thông tin vật tư ${itemData.name || itemData.code}`);
     } else {
       const newItem: SurplusItem = {
         id: `sur-${Date.now()}`,
-        code: itemData.code || 'SD-NEW',
+        code: itemData.code || `SD-${Date.now().toString().slice(-6)}`,
         name: itemData.name || 'Hàng dư mới',
-        group: itemData.group || 'Thiết bị IT',
+        group: itemData.group || 'Hàng dư',
         model: itemData.model || '',
         unit: itemData.unit || 'Cái',
         quantity: itemData.quantity || 1,
         condition: itemData.condition || 'Mới 100%',
-        location: itemData.location || 'Kho A',
-        reason: itemData.reason || 'Dư thừa kiểm kê',
+        location: itemData.location || '',
+        reason: itemData.reason || '',
         notes: itemData.notes || '',
-        createdAt: new Date().toISOString().split('T')[0],
+        image: resolvedImage,
+        createdAt: new Date().toISOString(),
       };
       setSurplusItems((prev) => [newItem, ...prev]);
-      showToast(`Đã thêm mới hàng dư ${newItem.code} thành công`);
+      showToast(`Đã thêm mới vật tư ${newItem.name || newItem.code} thành công`);
     }
     setEditingSurItem(null);
   };
@@ -985,6 +1011,11 @@ export default function App() {
         onClose={() => setIsSurModalOpen(false)}
         onSave={handleSaveSurplus}
         editingItem={editingSurItem}
+        isReadOnly={
+          editingSurItem
+            ? !currentUserPermissions.canManageSurplus
+            : !currentUserPermissions.canAddSurplus
+        }
       />
 
       <ImportModal
