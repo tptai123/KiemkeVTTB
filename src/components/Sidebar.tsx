@@ -6,6 +6,7 @@ import {
   Users,
   Shield,
 } from 'lucide-react';
+import { RolePermissions } from '../types';
 
 interface SidebarProps {
   activeModule: 'inventory' | 'dcdn' | 'surplus' | 'users' | 'permissions';
@@ -14,6 +15,7 @@ interface SidebarProps {
   setIsCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
   isMobileOpen: boolean;
   setIsMobileOpen: (open: boolean) => void;
+  userPermissions?: RolePermissions;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -23,34 +25,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen,
   setIsMobileOpen,
   setIsCollapsed,
+  userPermissions,
 }) => {
   const menuItems = [
     {
       id: 'inventory' as const,
       label: 'Kiểm kê VTTB',
       icon: ClipboardList,
+      visible: userPermissions ? userPermissions.canViewInventory : true,
     },
     {
       id: 'dcdn' as const,
       label: 'Kiểm kê DCĐN',
       icon: Wrench,
+      visible: userPermissions ? userPermissions.canViewDCDN : true,
     },
     {
       id: 'surplus' as const,
       label: 'Hàng dư',
       icon: PackagePlus,
+      visible: userPermissions ? userPermissions.canViewSurplus : true,
     },
     {
       id: 'users' as const,
       label: 'User',
       icon: Users,
+      visible: userPermissions ? userPermissions.canManageUsers : true,
     },
     {
       id: 'permissions' as const,
       label: 'Phân quyền',
       icon: Shield,
+      visible: userPermissions ? userPermissions.canManagePermissions : true,
     },
-  ];
+  ].filter((item) => item.visible);
 
   const logoUrl =
     'https://izangkbanoxeivphmwyc.supabase.co/storage/v1/object/public/File%20all/logo_webapp.png';

@@ -21,7 +21,19 @@ import {
   INITIAL_SURPLUS_ITEMS,
   INITIAL_USER,
 } from './mockData';
-import { InventoryItem, DCDNItem, SurplusItem, UserInfo } from './types';
+import {
+  AppRole,
+  RolePermissions,
+  InventoryItem,
+  DCDNItem,
+  SurplusItem,
+  UserInfo,
+} from './types';
+import {
+  fetchRolePermissionsFromSupabase,
+  saveAllRolePermissionsToSupabase,
+  DEFAULT_ROLE_PERMISSIONS,
+} from './services/permissionService';
 import { isSupabaseConfigured } from './lib/supabase';
 import {
   fetchInventoryItems,
@@ -71,6 +83,36 @@ export default function App() {
     setCurrentUser(null);
     showToast('Đã đăng xuất khỏi hệ thống', 'info');
   };
+
+  // Role Permissions State
+  const [rolePermissions, setRolePermissions] = useState<Record<AppRole, RolePermissions>>(
+    DEFAULT_ROLE_PERMISSIONS
+  );
+
+  // Load role permissions from Supabase on mount
+  useEffect(() => {
+    fetchRolePermissionsFromSupabase()
+      .then((data) => {
+        if (data) setRolePermissions(data);
+      })
+      .catch((err) => console.warn('Lỗi tải quyền từ Supabase:', err));
+  }, []);
+
+  // Resolve current user permissions
+  const userRole = (currentUser?.role || 'Người kiểm kê') as AppRole;
+  const currentUserPermissions: RolePermissions =
+    rolePermissions[userRole] ||
+    DEFAULT_ROLE_PERMISSIONS[userRole] ||
+    DEFAULT_ROLE_PERMISSIONS['Người kiểm kê'];
+
+  // Enforce module access restriction
+  useEffect(() => {
+    if (activeModule === 'users' && !currentUserPermissions.canManageUsers) {
+      setActiveModule('inventory');
+    } else if (activeModule === 'permissions' && !currentUserPermissions.canManagePermissions) {
+      setActiveModule('inventory');
+    }
+  }, [activeModule, currentUserPermissions]);
 
   // Sidebar collapsed state with localStorage persistence
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -711,6 +753,7 @@ export default function App() {
         setIsCollapsed={setIsCollapsed}
         isMobileOpen={isMobileOpen}
         setIsMobileOpen={setIsMobileOpen}
+        userPermissions={currentUserPermissions}
       />
 
       {/* Main Content Area */}
@@ -799,7 +842,16 @@ export default function App() {
 
           {activeModule === 'users' && <UsersModule onShowToast={showToast} />}
 
-          {activeModule === 'permissions' && <PermissionsModule onShowToast={showToast} />}
+          {activeModule === 'permissions' && (
+            <PermissionsModule
+              onShowToast={showToast}
+              rolePermissions={rolePermissions}
+              onSavePermissions={async (updated) => {
+                await saveAllRolePermissionsToSupabase(updated);
+                setRolePermissions(updated);
+              }}
+            />
+          )}
         </main>
       </div>
 

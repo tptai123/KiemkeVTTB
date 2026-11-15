@@ -57,6 +57,31 @@ export interface SurplusItem {
 
 export type InventoryStatus = 'all' | 'match' | 'missing' | 'surplus' | 'pending';
 
+export type AppRole = 'Quản trị viên' | 'Thủ kho' | 'Người kiểm kê';
+
+export interface RolePermissions {
+  // Kiểm kê VTTB
+  canViewInventory: boolean;
+  canAuditInventory: boolean;
+  canManageInventoryItems: boolean;
+  canExcelInventory: boolean;
+
+  // Kiểm kê DCĐN
+  canViewDCDN: boolean;
+  canAuditDCDN: boolean;
+  canManageDCDNItems: boolean;
+  canExcelDCDN: boolean;
+
+  // Hàng dư
+  canViewSurplus: boolean;
+  canAddSurplus: boolean;
+  canManageSurplus: boolean;
+
+  // Hệ thống
+  canManageUsers: boolean;
+  canManagePermissions: boolean;
+}
+
 export interface UserInfo {
   id?: string;
   authId?: string;
