@@ -1,6 +1,9 @@
 import { supabase, createIsolatedAuthClient } from '../lib/supabase';
 import { UserInfo } from '../types';
 
+export const DEFAULT_USER_AVATAR =
+  'https://izangkbanoxeivphmwyc.supabase.co/storage/v1/object/public/File%20all/icon_user.png';
+
 export interface UserRow {
   id: string;
   auth_id?: string | null;
@@ -23,9 +26,7 @@ export const mapRowToUserInfo = (row: UserRow): UserInfo => ({
   role: row.vai_tro || 'Chuyên viên Kiểm kê',
   department: row.phong_ban || 'Phòng Tài chính - Kế toán',
   phone: row.so_dien_thoai || '',
-  avatar:
-    row.avatar_url ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(row.ho_va_ten || 'User')}&background=0D8ABC&color=fff`,
+  avatar: row.avatar_url || DEFAULT_USER_AVATAR,
   status: row.trang_thai || 'Hoạt động',
   createdAt: row.ngay_tao,
 });
@@ -127,6 +128,11 @@ export async function createAuthUserAndProfile(
 
   if (!cleanEmail) {
     throw new Error('Vui lòng nhập email đăng nhập');
+  }
+
+  // Gán avatar mặc định nếu chưa có
+  if (!user.avatar) {
+    user.avatar = DEFAULT_USER_AVATAR;
   }
 
   // 1. Nếu có mật khẩu, ưu tiên gọi PostgreSQL RPC admin_create_user nếu đã chạy script SQL

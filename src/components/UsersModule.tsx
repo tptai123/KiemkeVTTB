@@ -34,6 +34,9 @@ interface UsersModuleProps {
   onCurrentUserUpdated?: (updated: UserInfo) => void;
 }
 
+export const DEFAULT_USER_AVATAR =
+  'https://izangkbanoxeivphmwyc.supabase.co/storage/v1/object/public/File%20all/icon_user.png';
+
 const DEFAULT_MOCK_USERS: UserInfo[] = [
   {
     id: '1',
@@ -43,8 +46,7 @@ const DEFAULT_MOCK_USERS: UserInfo[] = [
     department: 'Phòng Tài chính - Kế toán',
     phone: '0912345678',
     status: 'Hoạt động',
-    avatar:
-      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=faces',
+    avatar: DEFAULT_USER_AVATAR,
   },
   {
     id: '2',
@@ -54,8 +56,7 @@ const DEFAULT_MOCK_USERS: UserInfo[] = [
     department: 'Bộ phận Kho & VTTB',
     phone: '0933445566',
     status: 'Hoạt động',
-    avatar:
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=faces',
+    avatar: DEFAULT_USER_AVATAR,
   },
   {
     id: '3',
@@ -65,8 +66,7 @@ const DEFAULT_MOCK_USERS: UserInfo[] = [
     department: 'Phòng Kiểm toán nội bộ',
     phone: '0977889900',
     status: 'Hoạt động',
-    avatar:
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=faces',
+    avatar: DEFAULT_USER_AVATAR,
   },
   {
     id: '4',
@@ -76,8 +76,7 @@ const DEFAULT_MOCK_USERS: UserInfo[] = [
     department: 'Phòng Công nghệ thông tin',
     phone: '0987654321',
     status: 'Hoạt động',
-    avatar:
-      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=faces',
+    avatar: DEFAULT_USER_AVATAR,
   },
 ];
 
@@ -96,7 +95,6 @@ export const UsersModule: React.FC<UsersModuleProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [search, setSearch] = useState('');
-  const [selectedRole, setSelectedRole] = useState<string>('all');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -108,6 +106,7 @@ export const UsersModule: React.FC<UsersModuleProps> = ({
     department: 'Phòng Tài chính - Kế toán',
     phone: '',
     status: 'Hoạt động',
+    avatar: DEFAULT_USER_AVATAR,
   });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -181,6 +180,7 @@ export const UsersModule: React.FC<UsersModuleProps> = ({
       department: 'Phòng Tài chính - Kế toán',
       phone: '',
       status: 'Hoạt động',
+      avatar: DEFAULT_USER_AVATAR,
     });
     setPassword('');
     setShowPassword(false);
@@ -262,8 +262,12 @@ export const UsersModule: React.FC<UsersModuleProps> = ({
         }
       } else {
         // Create user
+        const payloadToCreate: Partial<UserInfo> = {
+          ...formData,
+          avatar: formData.avatar || DEFAULT_USER_AVATAR,
+        };
         if (isSupabaseConnected) {
-          const created = await createAuthUserAndProfile(formData, password);
+          const created = await createAuthUserAndProfile(payloadToCreate, password);
           setUsersList((prev) => [created, ...prev]);
           onShowToast(
             `Đã tạo tài khoản ${created.name} và đồng bộ sang Auth đăng nhập thành công!`,
@@ -278,9 +282,7 @@ export const UsersModule: React.FC<UsersModuleProps> = ({
             department: formData.department || '',
             phone: formData.phone || '',
             status: formData.status || 'Hoạt động',
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-              formData.name || 'User'
-            )}&background=0284c7&color=fff`,
+            avatar: DEFAULT_USER_AVATAR,
           };
           setUsersList((prev) => [newUser, ...prev]);
           onShowToast(`Đã thêm tài khoản ${newUser.name}`, 'success');
@@ -320,61 +322,37 @@ export const UsersModule: React.FC<UsersModuleProps> = ({
 
   // Filter
   const filteredUsers = usersList.filter((u) => {
-    const matchSearch =
+    return (
       u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase()) ||
-      (u.phone && u.phone.includes(search));
-    const matchRole = selectedRole === 'all' || u.role === selectedRole;
-    return matchSearch && matchRole;
+      Boolean(u.phone && u.phone.includes(search))
+    );
   });
 
   return (
     <div className="space-y-3 pb-12 animate-fade-in font-sans">
-      {/* Filter Toolbar (Nút Thêm tài khoản nằm bên phải bộ lọc) */}
-      <div className="bg-white p-3 sm:p-3.5 rounded-2xl shadow-xs border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-            />
-          </div>
-
-          {/* Role Filter */}
-          <div className="flex items-center gap-2 shrink-0">
-            <label className="text-xs font-semibold text-slate-500 whitespace-nowrap hidden sm:inline">
-              Vai trò:
-            </label>
-            <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
-              className="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-700 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
-            >
-              <option value="all">Tất cả vai trò</option>
-              {AVAILABLE_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* Filter Toolbar: Ô tìm kiếm và nút Thêm tài khoản nằm ngang hàng nhau */}
+      <div className="bg-white p-3 sm:p-3.5 rounded-2xl shadow-xs border border-slate-200 flex items-center justify-between gap-3">
+        {/* Search Input */}
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+          />
         </div>
 
-        {/* Nút Thêm tài khoản nằm bên phải */}
-        <div className="flex items-center gap-2 justify-end shrink-0">
-          <button
-            onClick={handleOpenCreateModal}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md shadow-blue-500/25 transition-all text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm tài khoản</span>
-          </button>
-        </div>
+        {/* Nút Thêm tài khoản nằm bên phải, ngang hàng với ô tìm kiếm */}
+        <button
+          onClick={handleOpenCreateModal}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md shadow-blue-500/25 transition-all text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Thêm tài khoản</span>
+        </button>
       </div>
 
       {/* Desktop Table View */}
@@ -596,13 +574,19 @@ export const UsersModule: React.FC<UsersModuleProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveUser} className="p-6 space-y-4">
+            <form onSubmit={handleSaveUser} className="p-6 space-y-4" autoComplete="off">
+              {/* Dummy hidden inputs để ngăn trình duyệt tự động điền (autofill) thông tin đăng nhập */}
+              <input type="text" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" />
+              <input type="password" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" />
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Họ và tên <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
+                  name="admin_created_user_fullname"
+                  autoComplete="off"
                   value={formData.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ví dụ: Nguyễn Văn Kiểm"
@@ -617,6 +601,9 @@ export const UsersModule: React.FC<UsersModuleProps> = ({
                 </label>
                 <input
                   type="email"
+                  name="admin_created_user_email"
+                  id="admin_created_user_email"
+                  autoComplete="off"
                   value={formData.email || ''}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="kiem.nv@doanhnghiep.vn"
@@ -640,6 +627,9 @@ export const UsersModule: React.FC<UsersModuleProps> = ({
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    name="admin_created_user_password"
+                    id="admin_created_user_password"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={

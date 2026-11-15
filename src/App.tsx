@@ -852,10 +852,23 @@ export default function App() {
         />
 
         <main
-          className={`flex-1 p-1 sm:p-2 lg:p-2.5 max-w-[1920px] w-full mx-auto ${
+          className={`flex-1 p-1 sm:p-2 lg:p-2.5 max-w-[1920px] w-full mx-auto relative ${
             activeModule === 'inventory' || activeModule === 'dcdn' ? 'min-h-0 overflow-hidden flex flex-col' : ''
           }`}
         >
+          {/* Loading overlay hiển thị tại giao diện module khi đang đồng bộ dữ liệu */}
+          {isSyncing && (
+            <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center gap-3 animate-fade-in pointer-events-auto select-none">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200/80 shadow-lg flex items-center justify-center">
+                <div className="w-7 h-7 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+              <div className="text-center">
+                <h4 className="font-bold text-sm text-slate-800">Đang đồng bộ dữ liệu với Supabase...</h4>
+                <p className="text-xs text-slate-500 mt-0.5">Vui lòng chờ trong giây lát</p>
+              </div>
+            </div>
+          )}
+
           {activeModule === 'inventory' && (
             <InventoryModule
               items={inventoryItems}
