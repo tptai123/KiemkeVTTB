@@ -8,11 +8,9 @@ import {
   Building,
   CheckCircle2,
   Phone,
-  Edit2,
+  SquarePen,
   Trash2,
   X,
-  Lock,
-  UserCheck,
   UserX,
   RefreshCw,
 } from 'lucide-react';
@@ -34,7 +32,7 @@ const DEFAULT_MOCK_USERS: UserInfo[] = [
     id: '1',
     name: 'Nguyễn Văn Kiểm',
     email: 'kiem.nv@doanhnghiep.vn',
-    role: 'Chuyên viên Kiểm kê',
+    role: 'Người kiểm kê',
     department: 'Phòng Tài chính - Kế toán',
     phone: '0912345678',
     status: 'Hoạt động',
@@ -56,7 +54,7 @@ const DEFAULT_MOCK_USERS: UserInfo[] = [
     id: '3',
     name: 'Lê Hoàng Long',
     email: 'long.lh@doanhnghiep.vn',
-    role: 'Kiểm toán viên',
+    role: 'Người kiểm kê',
     department: 'Phòng Kiểm toán nội bộ',
     phone: '0977889900',
     status: 'Hoạt động',
@@ -67,7 +65,7 @@ const DEFAULT_MOCK_USERS: UserInfo[] = [
     id: '4',
     name: 'Phạm Thị Lan',
     email: 'admin@doanhnghiep.vn',
-    role: 'Quản trị hệ thống',
+    role: 'Quản trị viên',
     department: 'Phòng Công nghệ thông tin',
     phone: '0987654321',
     status: 'Hoạt động',
@@ -77,11 +75,9 @@ const DEFAULT_MOCK_USERS: UserInfo[] = [
 ];
 
 const AVAILABLE_ROLES = [
-  'Quản trị hệ thống',
-  'Chuyên viên Kiểm kê',
+  'Quản trị viên',
   'Thủ kho',
-  'Kiểm toán viên',
-  'Người xem',
+  'Người kiểm kê',
 ];
 
 export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
@@ -97,7 +93,7 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
   const [formData, setFormData] = useState<Partial<UserInfo>>({
     name: '',
     email: '',
-    role: 'Chuyên viên Kiểm kê',
+    role: 'Người kiểm kê',
     department: 'Phòng Tài chính - Kế toán',
     phone: '',
     status: 'Hoạt động',
@@ -114,7 +110,6 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
         setUsersList(data);
         setIsSupabaseConnected(true);
       } else {
-        // Table exists but is empty
         setIsSupabaseConnected(true);
       }
     } catch (err) {
@@ -156,7 +151,7 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
     setFormData({
       name: '',
       email: '',
-      role: 'Chuyên viên Kiểm kê',
+      role: 'Người kiểm kê',
       department: 'Phòng Tài chính - Kế toán',
       phone: '',
       status: 'Hoạt động',
@@ -220,7 +215,7 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
             id: `usr-${Date.now()}`,
             name: formData.name || 'Người dùng',
             email: formData.email || '',
-            role: formData.role || 'Chuyên viên Kiểm kê',
+            role: formData.role || 'Người kiểm kê',
             department: formData.department || '',
             phone: formData.phone || '',
             status: formData.status || 'Hoạt động',
@@ -275,34 +270,48 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
   });
 
   return (
-    <div className="space-y-4 pb-12 animate-fade-in font-sans">
-      {/* Top Banner & Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-base sm:text-lg font-bold text-slate-800">
-              Quản lý Tài khoản Người dùng
-            </h3>
-            {isSupabaseConnected ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
-                <CheckCircle2 className="w-3 h-3" /> Supabase Realtime
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600">
-                Dữ liệu mẫu
-              </span>
-            )}
+    <div className="space-y-3 pb-12 animate-fade-in font-sans">
+      {/* Filter Toolbar (Nút Thêm tài khoản nằm bên phải bộ lọc) */}
+      <div className="bg-white p-3 sm:p-3.5 rounded-2xl shadow-xs border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+            />
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Danh sách nhân sự tham gia hệ thống kiểm kê và quản lý tài sản ({usersList.length} tài khoản)
-          </p>
+
+          {/* Role Filter */}
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-xs font-semibold text-slate-500 whitespace-nowrap hidden sm:inline">
+              Vai trò:
+            </label>
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-700 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
+            >
+              <option value="all">Tất cả vai trò</option>
+              {AVAILABLE_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Nút Thêm tài khoản nằm bên phải */}
+        <div className="flex items-center gap-2 justify-end shrink-0">
           <button
             onClick={loadUsers}
             disabled={isLoading}
-            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
+            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
             title="Tải lại danh sách"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -310,44 +319,11 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
 
           <button
             onClick={handleOpenCreateModal}
-            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md shadow-blue-500/25 transition-all text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md shadow-blue-500/25 transition-all text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm tài khoản</span>
           </button>
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="bg-white p-3 sm:p-4 rounded-2xl shadow-xs border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
-          />
-        </div>
-
-        {/* Role Filter */}
-        <div className="flex items-center gap-2 shrink-0">
-          <label className="text-xs font-semibold text-slate-500 whitespace-nowrap hidden sm:inline">
-            Vai trò:
-          </label>
-          <select
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
-            className="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-700 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">Tất cả vai trò</option>
-            {AVAILABLE_ROLES.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 
@@ -357,24 +333,30 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600">
+                <th className="py-3.5 px-3 text-center w-14">Stt</th>
                 <th className="py-3.5 px-5">Nhân sự</th>
                 <th className="py-3.5 px-4">Vai trò</th>
                 <th className="py-3.5 px-4">Phòng ban</th>
                 <th className="py-3.5 px-4">Số điện thoại</th>
                 <th className="py-3.5 px-4">Trạng thái</th>
-                <th className="py-3.5 px-4 text-center">Thao tác</th>
+                <th className="py-3.5 px-4 text-center w-28">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-slate-400">
+                  <td colSpan={7} className="py-10 text-center text-slate-400">
                     Không tìm thấy tài khoản người dùng phù hợp.
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
+                filteredUsers.map((user, index) => (
                   <tr key={user.id || user.email} className="hover:bg-slate-50/80 transition-colors">
+                    {/* Cột Stt nằm đầu tiên */}
+                    <td className="py-3 px-3 text-center font-bold text-slate-500">
+                      {index + 1}
+                    </td>
+
                     <td className="py-3 px-5 flex items-center gap-3">
                       <img
                         src={
@@ -431,18 +413,19 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
                       )}
                     </td>
 
+                    {/* Cột thao tác: Edit ô vuông có cây viết (màu xanh dương), Xóa (màu đỏ) */}
                     <td className="py-3 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
+                      <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleOpenEditModal(user)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 border border-blue-200 transition-colors cursor-pointer shadow-2xs"
                           title="Chỉnh sửa thông tin"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <SquarePen className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteUser(user)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 border border-red-200 transition-colors cursor-pointer shadow-2xs"
                           title="Xóa tài khoản"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -464,13 +447,16 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
             Không tìm thấy tài khoản phù hợp.
           </div>
         ) : (
-          filteredUsers.map((user) => (
+          filteredUsers.map((user, index) => (
             <div
               key={user.id || user.email}
               className="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 space-y-3"
             >
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md shrink-0">
+                    #{index + 1}
+                  </span>
                   <img
                     src={
                       user.avatar ||
@@ -489,16 +475,19 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
+                {/* Mobile action buttons */}
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => handleOpenEditModal(user)}
-                    className="p-2 rounded-xl text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                    className="p-1.5 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors shadow-2xs"
+                    title="Chỉnh sửa"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <SquarePen className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDeleteUser(user)}
-                    className="p-2 rounded-xl text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    className="p-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors shadow-2xs"
+                    title="Xóa"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -590,10 +579,10 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Vai trò / Chức vụ
+                    Vai trò / Quyền hạn
                   </label>
                   <select
-                    value={formData.role || 'Chuyên viên Kiểm kê'}
+                    value={formData.role || 'Người kiểm kê'}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
                   >
