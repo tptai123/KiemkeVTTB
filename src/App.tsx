@@ -14,7 +14,8 @@ import { ImportModal } from './components/ImportModal';
 import { DetailModal } from './components/DetailModal';
 import { Toast, ToastMessage } from './components/Toast';
 import { LoginScreen } from './components/LoginScreen';
-import { getSavedSessionUser, signOut as authSignOut } from './services/authService';
+import { getSavedSessionUser, signOut as authSignOut, LOCAL_AUTH_KEY } from './services/authService';
+import { mapRowToUserInfo, UserRow } from './services/userService';
 import {
   INITIAL_INVENTORY_ITEMS,
   INITIAL_DCDN_ITEMS,
@@ -305,6 +306,78 @@ export default function App() {
       client.removeChannel(channel);
     };
   }, [isDCDNConnected]);
+
+  // Realtime subscription for current user profile changes in Supabase
+  useEffect(() => {
+    const client = supabase;
+    if (!client || !currentUser?.email) return;
+
+    const channel = client
+      .channel('current_user_profile_navbar_realtime')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'users' },
+        (payload) => {
+          if (payload.new) {
+            const updated = mapRowToUserInfo(payload.new as UserRow);
+            const isMatch =
+              updated.email.toLowerCase() === currentUser.email.toLowerCase() ||
+              (currentUser.id && updated.id === currentUser.id) ||
+              (currentUser.authId && updated.authId === currentUser.authId);
+            if (isMatch) {
+              setCurrentUser(updated);
+              localStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(updated));
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, [currentUser?.email, currentUser?.id, currentUser?.authId]);
+
+  // State & Handler for Syncing Data from Supabase
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncAllData = async () => {
+    if (!isSupabaseConfigured) {
+      showToast('Chưa cấu hình Supabase, không thể đồng bộ', 'info');
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const results = await Promise.allSettled([
+        fetchInventoryItems(),
+        fetchDCDNItems(),
+        fetchRolePermissionsFromSupabase(),
+        getSavedSessionUser(),
+      ]);
+
+      if (results[0].status === 'fulfilled') {
+        setInventoryItems(results[0].value);
+        setIsSupabaseConnected(true);
+      }
+      if (results[1].status === 'fulfilled') {
+        setDcdnItems(results[1].value);
+        setIsDCDNConnected(true);
+      }
+      if (results[2].status === 'fulfilled' && results[2].value) {
+        setRolePermissions(results[2].value);
+      }
+      if (results[3].status === 'fulfilled' && results[3].value) {
+        setCurrentUser(results[3].value);
+      }
+
+      showToast('Đồng bộ dữ liệu Supabase mới nhất thành công!', 'success');
+    } catch (err) {
+      console.error('Lỗi khi đồng bộ dữ liệu:', err);
+      showToast('Đồng bộ dữ liệu thất bại', 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // --- INVENTORY HANDLERS ---
   const handleSaveInventory = async (
@@ -774,6 +847,8 @@ export default function App() {
           activeStatFilter={activeModule === 'dcdn' ? dcdnStatFilter : statFilter}
           currentUser={currentUser}
           onLogout={handleLogout}
+          onSync={handleSyncAllData}
+          isSyncing={isSyncing}
         />
 
         <main
@@ -843,7 +918,16 @@ export default function App() {
             />
           )}
 
-          {activeModule === 'users' && <UsersModule onShowToast={showToast} />}
+          {activeModule === 'users' && (
+            <UsersModule
+              onShowToast={showToast}
+              currentUser={currentUser}
+              onCurrentUserUpdated={(updated) => {
+                setCurrentUser(updated);
+                localStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(updated));
+              }}
+            />
+          )}
 
           {activeModule === 'permissions' && (
             <PermissionsModule

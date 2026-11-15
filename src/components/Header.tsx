@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Menu, ChevronDown, LogOut, User, Building, Mail, Shield } from 'lucide-react';
+import { Menu, ChevronDown, LogOut, User, Building, Mail, Shield, RefreshCw } from 'lucide-react';
 import { InventoryItem, UserInfo } from '../types';
 
 interface HeaderProps {
@@ -11,6 +11,8 @@ interface HeaderProps {
   activeStatFilter?: string;
   currentUser?: UserInfo | null;
   onLogout?: () => void;
+  onSync?: () => Promise<void> | void;
+  isSyncing?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,6 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   activeStatFilter = 'all',
   currentUser,
   onLogout,
+  onSync,
+  isSyncing = false,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -169,8 +173,29 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      {/* Right: User Profile (Họ và tên dòng trên, Vai trò dòng dưới) */}
-      <div className="relative shrink-0" ref={dropdownRef}>
+      {/* Right: Sync Button & User Profile */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        {/* Nút Đồng bộ dữ liệu Supabase */}
+        {onSync && (
+          <button
+            type="button"
+            onClick={onSync}
+            disabled={isSyncing}
+            className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-600 transition-all flex items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-2xs group disabled:opacity-50"
+            title="Đồng bộ lại dữ liệu mới nhất từ Supabase"
+            aria-label="Đồng bộ dữ liệu"
+          >
+            <RefreshCw
+              className={`w-4 h-4 text-slate-600 group-hover:text-blue-600 transition-colors ${
+                isSyncing ? 'animate-spin text-blue-600' : ''
+              }`}
+            />
+            <span className="hidden md:inline">Đồng bộ</span>
+          </button>
+        )}
+
+        {/* User Profile (Họ và tên dòng trên, Vai trò dòng dưới) */}
+        <div className="relative shrink-0" ref={dropdownRef}>
         <button
           onClick={() => setIsDropdownOpen((prev) => !prev)}
           className="flex items-center gap-2.5 p-1 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200 focus:outline-hidden cursor-pointer group"
@@ -255,6 +280,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
         )}
+        </div>
       </div>
     </header>
   );

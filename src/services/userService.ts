@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, createIsolatedAuthClient } from '../lib/supabase';
 import { UserInfo } from '../types';
 
 export interface UserRow {
@@ -109,6 +109,138 @@ export async function updateUserInSupabase(
   }
 
   return mapRowToUserInfo(data as UserRow);
+}
+
+/**
+ * Quản trị viên tạo tài khoản có kèm mật khẩu:
+ * Đồng thời đồng bộ sang cả auth.users và public.users để người dùng có thể đăng nhập ngay lập tức.
+ */
+export async function createAuthUserAndProfile(
+  user: Partial<UserInfo>,
+  password?: string
+): Promise<UserInfo> {
+  const client = supabase;
+  if (!client) throw new Error('Supabase client chưa được cấu hình');
+
+  const cleanEmail = (user.email || '').trim().toLowerCase();
+  const cleanPassword = (password || '').trim();
+
+  if (!cleanEmail) {
+    throw new Error('Vui lòng nhập email đăng nhập');
+  }
+
+  // 1. Nếu có mật khẩu, ưu tiên gọi PostgreSQL RPC admin_create_user nếu đã chạy script SQL
+  if (cleanPassword) {
+    try {
+      const { data: rpcRes, error: rpcErr } = await client.rpc('admin_create_user', {
+        new_email: cleanEmail,
+        new_password: cleanPassword,
+        new_name: user.name || '',
+        new_role: user.role || 'Người kiểm kê',
+        new_department: user.department || 'Phòng Tài chính - Kế toán',
+        new_phone: user.phone || '',
+      });
+
+      if (!rpcErr && rpcRes && rpcRes.success) {
+        // Truy vấn lại bản ghi từ public.users
+        const { data: profile } = await client
+          .from('users')
+          .select('*')
+          .eq('email', cleanEmail)
+          .maybeSingle();
+
+        if (profile) {
+          return mapRowToUserInfo(profile as UserRow);
+        }
+      }
+    } catch (err) {
+      console.warn('RPC admin_create_user không khả dụng, chuyển sang đăng ký qua Auth Client:', err);
+    }
+
+    // 2. Fallback: Dùng client Supabase độc lập (không lưu session) để đăng ký vào auth.users
+    const authClient = createIsolatedAuthClient();
+    if (authClient) {
+      const { data: authData, error: authErr } = await authClient.auth.signUp({
+        email: cleanEmail,
+        password: cleanPassword,
+        options: {
+          data: {
+            ho_va_ten: user.name,
+            vai_tro: user.role,
+            phong_ban: user.department,
+            so_dien_thoai: user.phone,
+          },
+        },
+      });
+
+      if (authErr && !authErr.message.toLowerCase().includes('already registered')) {
+        throw new Error(`Lỗi tạo tài khoản Auth: ${authErr.message}`);
+      }
+
+      if (authData?.user?.id) {
+        user.authId = authData.user.id;
+      }
+    }
+  }
+
+  // 3. Đảm bảo bản ghi được lưu hoàn chỉnh vào public.users
+  const row = mapUserInfoToRow(user);
+
+  // Thử insert hoặc update nếu đã có trigger tạo trước
+  const { data: existing } = await client
+    .from('users')
+    .select('*')
+    .eq('email', cleanEmail)
+    .maybeSingle();
+
+  if (existing) {
+    const { data: updated, error: updateErr } = await client
+      .from('users')
+      .update(row)
+      .eq('id', existing.id)
+      .select()
+      .single();
+
+    if (updateErr) throw updateErr;
+    return mapRowToUserInfo(updated as UserRow);
+  }
+
+  const { data: created, error: createErr } = await client
+    .from('users')
+    .insert([row])
+    .select()
+    .single();
+
+  if (createErr) throw createErr;
+  return mapRowToUserInfo(created as UserRow);
+}
+
+/**
+ * Quản trị viên cập nhật mật khẩu cho một tài khoản người dùng
+ */
+export async function adminUpdateUserPassword(
+  email: string,
+  newPassword: string
+): Promise<void> {
+  const client = supabase;
+  if (!client) throw new Error('Supabase client chưa được cấu hình');
+
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPassword = newPassword.trim();
+
+  if (!cleanPassword || cleanPassword.length < 6) {
+    throw new Error('Mật khẩu mới phải có ít nhất 6 ký tự');
+  }
+
+  const { data, error } = await client.rpc('admin_set_user_password', {
+    target_email: cleanEmail,
+    new_password: cleanPassword,
+  });
+
+  if (error || (data && !data.success)) {
+    const msg = error?.message || data?.message || 'Không thể cập nhật mật khẩu';
+    throw new Error(msg);
+  }
 }
 
 /**

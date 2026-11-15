@@ -12,7 +12,10 @@ import {
   Trash2,
   X,
   UserX,
-  RefreshCw,
+  Eye,
+  EyeOff,
+  Lock,
+  KeyRound,
 } from 'lucide-react';
 import { UserInfo } from '../types';
 import {
@@ -20,11 +23,15 @@ import {
   createUserInSupabase,
   updateUserInSupabase,
   deleteUserInSupabase,
+  createAuthUserAndProfile,
+  adminUpdateUserPassword,
 } from '../services/userService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface UsersModuleProps {
   onShowToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  currentUser?: UserInfo | null;
+  onCurrentUserUpdated?: (updated: UserInfo) => void;
 }
 
 const DEFAULT_MOCK_USERS: UserInfo[] = [
@@ -80,7 +87,11 @@ const AVAILABLE_ROLES = [
   'Người kiểm kê',
 ];
 
-export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
+export const UsersModule: React.FC<UsersModuleProps> = ({
+  onShowToast,
+  currentUser,
+  onCurrentUserUpdated,
+}) => {
   const [usersList, setUsersList] = useState<UserInfo[]>(DEFAULT_MOCK_USERS);
   const [isLoading, setIsLoading] = useState(false);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
@@ -98,6 +109,8 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
     phone: '',
     status: 'Hoạt động',
   });
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Load users from Supabase on mount
@@ -109,6 +122,19 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
       if (data && data.length > 0) {
         setUsersList(data);
         setIsSupabaseConnected(true);
+
+        // Kiểm tra xem hồ sơ của tài khoản đang đăng nhập có thay đổi không
+        if (currentUser && onCurrentUserUpdated) {
+          const freshMe = data.find(
+            (u) =>
+              (currentUser.id && u.id === currentUser.id) ||
+              u.email.toLowerCase() === currentUser.email.toLowerCase() ||
+              (currentUser.authId && u.authId === currentUser.authId)
+          );
+          if (freshMe && JSON.stringify(freshMe) !== JSON.stringify(currentUser)) {
+            onCurrentUserUpdated(freshMe);
+          }
+        }
       } else {
         setIsSupabaseConnected(true);
       }
@@ -143,7 +169,7 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
     return () => {
       client.removeChannel(channel);
     };
-  }, [isSupabaseConnected]);
+  }, [isSupabaseConnected, currentUser]);
 
   // Open modal for Create
   const handleOpenCreateModal = () => {
@@ -156,6 +182,8 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
       phone: '',
       status: 'Hoạt động',
     });
+    setPassword('');
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
@@ -171,6 +199,8 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
       status: user.status || 'Hoạt động',
       avatar: user.avatar,
     });
+    setPassword('');
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
@@ -185,31 +215,60 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
       onShowToast('Vui lòng nhập Email', 'error');
       return;
     }
+    if (!editingUser && (!password || password.trim().length < 6)) {
+      onShowToast('Mật khẩu đăng nhập phải có ít nhất 6 ký tự', 'error');
+      return;
+    }
 
     setIsSaving(true);
     try {
       if (editingUser?.id) {
-        // Update
+        // Update user
+        let updated: UserInfo;
         if (isSupabaseConnected) {
-          const updated = await updateUserInSupabase(editingUser.id, formData);
+          updated = await updateUserInSupabase(editingUser.id, formData);
+
+          if (password.trim().length >= 6) {
+            try {
+              await adminUpdateUserPassword(editingUser.email, password);
+              onShowToast(`Đã cập nhật thông tin và mật khẩu cho ${updated.name}`, 'success');
+            } catch (pwErr) {
+              console.warn('Lỗi đổi mật khẩu auth:', pwErr);
+              onShowToast(`Đã cập nhật thông tin hồ sơ cho ${updated.name}`, 'success');
+            }
+          } else {
+            onShowToast(`Đã cập nhật tài khoản ${updated.name} thành công`, 'success');
+          }
+
           setUsersList((prev) =>
             prev.map((u) => (u.id === editingUser.id ? updated : u))
           );
-          onShowToast(`Đã cập nhật tài khoản ${updated.name} thành công`, 'success');
         } else {
+          updated = { ...editingUser, ...formData } as UserInfo;
           setUsersList((prev) =>
-            prev.map((u) =>
-              u.id === editingUser.id ? ({ ...u, ...formData } as UserInfo) : u
-            )
+            prev.map((u) => (u.id === editingUser.id ? updated : u))
           );
           onShowToast(`Đã cập nhật tài khoản ${formData.name}`, 'success');
         }
+
+        // Đồng bộ ngay lập tức lên Navbar nếu tài khoản được chỉnh sửa là tài khoản hiện tại
+        if (
+          currentUser &&
+          (currentUser.id === editingUser.id ||
+            currentUser.email.toLowerCase() === editingUser.email.toLowerCase() ||
+            (currentUser.authId && currentUser.authId === editingUser.authId))
+        ) {
+          onCurrentUserUpdated?.(updated);
+        }
       } else {
-        // Create
+        // Create user
         if (isSupabaseConnected) {
-          const created = await createUserInSupabase(formData);
+          const created = await createAuthUserAndProfile(formData, password);
           setUsersList((prev) => [created, ...prev]);
-          onShowToast(`Đã thêm mới tài khoản ${created.name} lên Supabase`, 'success');
+          onShowToast(
+            `Đã tạo tài khoản ${created.name} và đồng bộ sang Auth đăng nhập thành công!`,
+            'success'
+          );
         } else {
           const newUser: UserInfo = {
             id: `usr-${Date.now()}`,
@@ -308,15 +367,6 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
 
         {/* Nút Thêm tài khoản nằm bên phải */}
         <div className="flex items-center gap-2 justify-end shrink-0">
-          <button
-            onClick={loadUsers}
-            disabled={isLoading}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
-            title="Tải lại danh sách"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
-
           <button
             onClick={handleOpenCreateModal}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md shadow-blue-500/25 transition-all text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shrink-0"
@@ -574,6 +624,47 @@ export const UsersModule: React.FC<UsersModuleProps> = ({ onShowToast }) => {
                   disabled={Boolean(editingUser)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium disabled:opacity-60"
                 />
+              </div>
+
+              {/* Mật khẩu đăng nhập (Tự động đồng bộ sang Supabase Auth) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    {editingUser ? 'Mật khẩu mới' : 'Mật khẩu đăng nhập'}{' '}
+                    {!editingUser && <span className="text-red-500">*</span>}
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-normal">
+                    {editingUser ? 'Bỏ trống nếu giữ nguyên' : 'Tối thiểu 6 ký tự'}
+                  </span>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={
+                      editingUser
+                        ? 'Nhập mật khẩu mới nếu muốn đổi...'
+                        : 'Nhập mật khẩu để đăng nhập ứng dụng...'
+                    }
+                    required={!editingUser}
+                    minLength={editingUser && !password ? undefined : 6}
+                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                    title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {editingUser
+                    ? 'Chỉ nhập nếu quản trị viên muốn thay đổi mật khẩu đăng nhập cho tài khoản này.'
+                    : 'Mật khẩu này sẽ tự động đồng bộ sang Supabase Auth để tài khoản có thể đăng nhập ngay.'}
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

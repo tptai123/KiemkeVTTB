@@ -45,21 +45,6 @@ export const PermissionsModule: React.FC<PermissionsModuleProps> = ({
     setPermissionsMap(rolePermissions);
   }, [rolePermissions]);
 
-  // Calculate user counts per role
-  const userCounts = useMemo(() => {
-    const counts: Record<AppRole, number> = {
-      'Quản trị viên': 0,
-      'Thủ kho': 0,
-      'Người kiểm kê': 0,
-    };
-    for (const u of usersList) {
-      if (u.role === 'Quản trị viên' || u.role === 'Thủ kho' || u.role === 'Người kiểm kê') {
-        counts[u.role]++;
-      }
-    }
-    return counts;
-  }, [usersList]);
-
   // Toggle single permission for a role
   const handleToggle = (role: AppRole, key: keyof RolePermissions) => {
     // Không cho phép tắt quyền của Quản trị viên để tránh tự khóa hệ thống
@@ -101,78 +86,8 @@ export const PermissionsModule: React.FC<PermissionsModuleProps> = ({
     }
   };
 
-  // Roles definition for UI
-  const ROLES_INFO: { role: AppRole; icon: React.ElementType; color: string; desc: string }[] = [
-    {
-      role: 'Quản trị viên',
-      icon: ShieldCheck,
-      color: 'blue',
-      desc: 'Toàn quyền quản trị hệ thống, quản lý dữ liệu, người dùng và phân quyền.',
-    },
-    {
-      role: 'Thủ kho',
-      icon: Boxes,
-      color: 'emerald',
-      desc: 'Quản lý kho, cập nhật thông tin vật tư, xuất nhập file Excel và hàng dư.',
-    },
-    {
-      role: 'Người kiểm kê',
-      icon: ClipboardCheck,
-      color: 'indigo',
-      desc: 'Thực hiện kiểm đếm thực tế, chụp ảnh và ghi nhận số lượng tồn.',
-    },
-  ];
-
   return (
     <div className="space-y-4 pb-12 animate-fade-in font-sans">
-      {/* 3 Summary Role Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-        {ROLES_INFO.map((item) => {
-          const Icon = item.icon;
-          const count = userCounts[item.role];
-          const isSelectedMobile = selectedMobileRole === item.role;
-          return (
-            <div
-              key={item.role}
-              onClick={() => setSelectedMobileRole(item.role)}
-              className={`bg-white p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer ${
-                isSelectedMobile
-                  ? 'border-blue-500 shadow-md ring-2 ring-blue-500/20'
-                  : 'border-slate-200 shadow-xs hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      item.color === 'blue'
-                        ? 'bg-blue-50 text-blue-600'
-                        : item.color === 'emerald'
-                        ? 'bg-emerald-50 text-emerald-600'
-                        : 'bg-indigo-50 text-indigo-600'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm sm:text-base text-slate-800">
-                      {item.role}
-                    </h3>
-                    <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
-                      <Users className="w-3.5 h-3.5" />
-                      <span>{count} nhân sự</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs text-slate-600 mt-2.5 line-clamp-2 leading-relaxed">
-                {item.desc}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-
       {/* Desktop Permission Matrix View */}
       <div className="hidden lg:block bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
