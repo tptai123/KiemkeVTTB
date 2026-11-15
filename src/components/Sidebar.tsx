@@ -72,19 +72,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Top Header / Logo */}
-        <div className="h-16 px-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="h-16 px-3.5 border-b border-slate-100 flex items-center justify-between">
           {!isCollapsed && (
             <div className="flex items-center gap-3 overflow-hidden animate-fade-in mx-auto lg:mx-0">
               <img
                 src={logoUrl}
                 alt="Logo ứng dụng"
-                className="w-10 h-10 rounded-xl object-contain shadow-xs shrink-0 bg-slate-50 p-0.5"
+                className="w-12 h-12 rounded-xl object-contain shrink-0 drop-shadow-xs"
               />
               <div className="truncate">
-                <h1 className="font-bold text-base text-slate-900 tracking-tight leading-tight">
+                <h1 className="font-extrabold text-base text-slate-900 tracking-tight leading-tight">
                   KIỂM KÊ VTTB
                 </h1>
-                <span className="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wider block">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
                   Hệ thống quản lý
                 </span>
               </div>
@@ -92,11 +92,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
 
           {isCollapsed && (
-            <div className="mx-auto">
+            <div className="mx-auto flex items-center justify-center">
               <img
                 src={logoUrl}
                 alt="Logo ứng dụng"
-                className="w-10 h-10 rounded-xl object-contain shadow-xs bg-slate-50 p-0.5"
+                className="w-12 h-12 rounded-xl object-contain drop-shadow-xs"
               />
             </div>
           )}
