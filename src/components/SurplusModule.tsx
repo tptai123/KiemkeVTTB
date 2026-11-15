@@ -478,11 +478,11 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
                 onClick={() => onEditItem(item)}
                 className="bg-white rounded-2xl p-3.5 shadow-xs border border-slate-200 space-y-2.5 hover:border-slate-300 transition-all cursor-pointer relative"
               >
-                {/* 1. Phần trên: Ảnh bên trái (chiều cao bằng cụm bên phải: Tên vật tư + Số lượng, ĐVT, Vị trí) */}
-                <div className="flex items-stretch gap-3">
-                  {/* Hình ảnh bên trái */}
+                {/* 1. Phần trên: Ảnh bên trái (hình vuông nhỏ gọn cố định), bên phải là Tên vật tư + (Số lượng, ĐVT, Vị trí) */}
+                <div className="flex items-start gap-3">
+                  {/* Hình ảnh bên trái (hình vuông nhỏ gọn cố định) */}
                   <div
-                    className="w-20 min-h-[76px] shrink-0 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center relative group"
+                    className="w-14 h-14 shrink-0 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center relative aspect-square"
                     onClick={(e) => {
                       if (item.image) {
                         e.stopPropagation();
@@ -503,12 +503,12 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <ImageIcon className="w-7 h-7 text-slate-300" />
+                      <ImageIcon className="w-6 h-6 text-slate-300" />
                     )}
                   </div>
 
                   {/* Cụm thông tin bên phải: Tên vật tư + (Dưới là Số lượng, ĐVT, Vị trí) */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                  <div className="flex-1 min-w-0">
                     <h4
                       className="font-bold text-slate-900 text-sm leading-snug line-clamp-2"
                       title={item.name}
@@ -516,15 +516,18 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
                       {item.name}
                     </h4>
 
-                    {/* Dưới tên vật tư là Số lượng, ĐVT, Vị trí */}
-                    <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs text-slate-600 mt-1.5">
+                    {/* Dưới tên vật tư là Số lượng, ĐVT, Vị trí (ghi rõ "Vị trí: ", chữ đen) */}
+                    <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs mt-1.5">
                       <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 shrink-0">
                         {item.quantity} {item.unit}
                       </span>
                       <span className="text-slate-300">•</span>
-                      <span className="flex items-center gap-1 text-slate-600 truncate min-w-0">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate">{item.location || 'Chưa có vị trí'}</span>
+                      <span className="flex items-center gap-1 text-slate-900 truncate min-w-0">
+                        <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span className="truncate">
+                          <span className="font-semibold text-slate-900">Vị trí: </span>
+                          <span className="font-medium text-slate-900">{item.location || '—'}</span>
+                        </span>
                       </span>
                     </div>
                   </div>
