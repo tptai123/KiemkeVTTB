@@ -11,6 +11,9 @@ import {
   Check,
   X,
   ImageIcon,
+  MapPin,
+  AlertTriangle,
+  FileText,
 } from 'lucide-react';
 import { SurplusItem, RolePermissions } from '../types';
 import { ImageZoomModal } from './ImageZoomModal';
@@ -51,6 +54,9 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
     itemCode: '',
     itemName: '',
   });
+
+  // Modal xác nhận xóa vật tư
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<SurplusItem | null>(null);
 
   const conditionDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -430,7 +436,7 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onDeleteItem(item.id);
+                                setDeleteConfirmItem(item);
                               }}
                               title="Xóa vật tư này"
                               className="p-1.5 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
@@ -457,7 +463,7 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
         </div>
       </div>
 
-      {/* GIAO DIỆN MOBILE (Card View mượt mà, hỗ trợ touch) */}
+      {/* GIAO DIỆN MOBILE (Card View tinh gọn: Tên, Số lượng, ĐVT, Vị trí, Ghi chú, Tình trạng, Xóa có xác nhận) */}
       <div className="md:hidden flex-1 overflow-y-auto space-y-3 no-scrollbar pb-6">
         {filteredItems.length === 0 ? (
           <div className="bg-white p-8 rounded-2xl text-center text-slate-400 border border-slate-200">
@@ -465,29 +471,30 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
             <p className="font-semibold text-sm text-slate-700">Không tìm thấy vật tư hàng dư</p>
           </div>
         ) : (
-          filteredItems.map((item, index) => {
-            const stt = index + 1;
+          filteredItems.map((item) => {
             return (
               <div
                 key={item.id}
                 onClick={() => onEditItem(item)}
                 className="bg-white rounded-2xl p-3.5 shadow-xs border border-slate-200 space-y-2.5 hover:border-slate-300 transition-all cursor-pointer relative"
               >
-                <div className="flex items-start gap-3">
-                  {/* Thumbnail ảnh */}
+                {/* 1. Phần trên: Ảnh bên trái (chiều cao bằng cụm bên phải: Tên vật tư + Số lượng, ĐVT, Vị trí) */}
+                <div className="flex items-stretch gap-3">
+                  {/* Hình ảnh bên trái */}
                   <div
-                    className="w-14 h-14 shrink-0 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center"
+                    className="w-20 min-h-[76px] shrink-0 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center relative group"
                     onClick={(e) => {
                       if (item.image) {
                         e.stopPropagation();
                         setZoomImage({
                           isOpen: true,
                           imageUrl: item.image,
-                          itemCode: item.code || `SD-${stt}`,
+                          itemCode: item.code || `SD-${item.id.slice(0, 6)}`,
                           itemName: item.name,
                         });
                       }
                     }}
+                    title={item.image ? 'Nhấn để phóng to ảnh' : undefined}
                   >
                     {item.image ? (
                       <img
@@ -496,75 +503,148 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <ImageIcon className="w-6 h-6 text-slate-300" />
+                      <ImageIcon className="w-7 h-7 text-slate-300" />
                     )}
                   </div>
 
-                  {/* Thông tin chính */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                        #{stt}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                        {item.condition}
-                      </span>
-                    </div>
-
-                    <h4 className="font-bold text-slate-900 text-sm mt-1 leading-snug line-clamp-2">
+                  {/* Cụm thông tin bên phải: Tên vật tư + (Dưới là Số lượng, ĐVT, Vị trí) */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                    <h4
+                      className="font-bold text-slate-900 text-sm leading-snug line-clamp-2"
+                      title={item.name}
+                    >
                       {item.name}
                     </h4>
+
+                    {/* Dưới tên vật tư là Số lượng, ĐVT, Vị trí */}
+                    <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs text-slate-600 mt-1.5">
+                      <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 shrink-0">
+                        {item.quantity} {item.unit}
+                      </span>
+                      <span className="text-slate-300">•</span>
+                      <span className="flex items-center gap-1 text-slate-600 truncate min-w-0">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{item.location || 'Chưa có vị trí'}</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Chi tiết phụ */}
-                <div className="grid grid-cols-2 gap-2 p-2 bg-slate-50 rounded-xl text-xs text-slate-600">
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Số lượng & ĐVT:</span>
-                    <strong className="text-slate-800">
-                      {item.quantity} {item.unit}
-                    </strong>
+                {/* 2. Dưới nữa là: Ghi chú */}
+                {item.notes ? (
+                  <div className="bg-slate-50/80 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 flex items-start gap-1.5 border border-slate-100">
+                    <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                    <span className="line-clamp-2 text-slate-700 italic">
+                      {item.notes}
+                    </span>
                   </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Vị trí:</span>
-                    <span className="truncate block font-medium">{item.location || '—'}</span>
+                ) : (
+                  <div className="text-[11px] text-slate-400 italic px-1">
+                    Ghi chú: —
                   </div>
-                  {item.model && (
-                    <div className="col-span-2 border-t border-slate-100 pt-1">
-                      <span className="text-slate-400 block text-[10px]">Quy cách:</span>
-                      <span className="truncate block text-slate-700">{item.model}</span>
-                    </div>
-                  )}
-                  {item.notes && (
-                    <div className="col-span-2 border-t border-slate-100 pt-1">
-                      <span className="text-slate-400 block text-[10px]">Ghi chú:</span>
-                      <span className="truncate block text-slate-500 italic">{item.notes}</span>
-                    </div>
-                  )}
-                </div>
+                )}
 
-                {/* Footer card: Thao tác xóa duy nhất màu đỏ */}
-                {(!userPermissions || userPermissions.canManageSurplus) && (
-                  <div className="flex items-center justify-end pt-1">
+                {/* 3. Dưới footer: bên trái là Tình trạng, bên phải là nút icon Xóa (áp dụng phân quyền) */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  {/* Trái: Tình trạng */}
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    {item.condition || 'Mới 100%'}
+                  </span>
+
+                  {/* Phải: Nút icon Xóa (áp dụng phân quyền canManageSurplus) */}
+                  {(!userPermissions || userPermissions.canManageSurplus) && (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDeleteItem(item.id);
+                        setDeleteConfirmItem(item);
                       }}
-                      className="px-2.5 py-1 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 flex items-center gap-1 cursor-pointer transition-colors"
-                      title="Xóa vật tư"
+                      className="p-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 border border-red-200 transition-colors cursor-pointer shadow-2xs"
+                      title="Xóa vật tư này"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                      <span>Xóa</span>
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })
         )}
       </div>
+
+      {/* Modal Xác nhận xóa vật tư hàng dư */}
+      {deleteConfirmItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
+          <div
+            className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 space-y-4 animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header modal */}
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-900">
+                  Xác nhận xóa vật tư hàng dư
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Bạn có chắc chắn muốn xóa bản ghi vật tư này?
+                </p>
+              </div>
+            </div>
+
+            {/* Chi tiết vật tư bị xóa */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
+              <div className="font-semibold text-slate-900 line-clamp-2">
+                {deleteConfirmItem.name}
+              </div>
+              <div className="flex items-center gap-3 text-slate-600 flex-wrap">
+                <span>
+                  Số lượng: <strong className="text-slate-800">{deleteConfirmItem.quantity} {deleteConfirmItem.unit}</strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Vị trí: <span className="font-medium">{deleteConfirmItem.location || '—'}</span>
+                </span>
+              </div>
+              {deleteConfirmItem.condition && (
+                <div className="text-slate-500">
+                  Tình trạng: <span className="text-slate-700 font-medium">{deleteConfirmItem.condition}</span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-red-600 font-medium">
+              * Hành động này sẽ xóa dữ liệu vĩnh viễn khỏi hệ thống và không thể hoàn tác.
+            </p>
+
+            {/* Footer hành động */}
+            <div className="flex items-center justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmItem(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (deleteConfirmItem) {
+                    onDeleteItem(deleteConfirmItem.id);
+                    setDeleteConfirmItem(null);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 shadow-md shadow-red-500/20 cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xác nhận xóa</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal phóng to ảnh */}
       {zoomImage.isOpen && (

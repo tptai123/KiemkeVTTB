@@ -765,21 +765,19 @@ export default function App() {
   };
 
   const handleDeleteSurplus = async (id: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa bản ghi hàng dư này?')) {
-      if (isSurplusConnected) {
-        try {
-          await deleteSurplusItemInSupabase(id);
-          setSurplusItems((prev) => prev.filter((item) => item.id !== id));
-          showToast('Đã xóa hàng dư trên Supabase thành công', 'info');
-          return;
-        } catch (err) {
-          console.error('Lỗi khi xóa hàng dư trên Supabase:', err);
-          showToast('Lỗi khi xóa trên Supabase', 'error');
-        }
+    if (isSurplusConnected) {
+      try {
+        await deleteSurplusItemInSupabase(id);
+        setSurplusItems((prev) => prev.filter((item) => item.id !== id));
+        showToast('Đã xóa hàng dư trên Supabase thành công', 'info');
+        return;
+      } catch (err) {
+        console.error('Lỗi khi xóa hàng dư trên Supabase:', err);
+        showToast('Lỗi khi xóa trên Supabase', 'error');
       }
-      setSurplusItems((prev) => prev.filter((item) => item.id !== id));
-      showToast('Đã xóa hàng dư thành công', 'info');
     }
+    setSurplusItems((prev) => prev.filter((item) => item.id !== id));
+    showToast('Đã xóa hàng dư thành công', 'info');
   };
 
   const handleImportInventoryItems = async (itemsToImport: Partial<InventoryItem>[]) => {
