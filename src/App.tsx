@@ -795,6 +795,7 @@ export default function App() {
                 setIsImportOpen(true);
               }}
               onExportExcel={handleExportExcel}
+              userPermissions={currentUserPermissions}
             />
           )}
 
@@ -812,6 +813,7 @@ export default function App() {
                 setIsImportOpen(true);
               }}
               onExportExcel={handleExportDCDNExcel}
+              userPermissions={currentUserPermissions}
             />
           )}
 
@@ -837,6 +839,7 @@ export default function App() {
                 setIsImportOpen(true);
               }}
               onShowToast={showToast}
+              userPermissions={currentUserPermissions}
             />
           )}
 
@@ -864,6 +867,7 @@ export default function App() {
           editingItem={editingInvItem}
           availableProposals={availableProposals}
           currentUserName={currentUser?.name || INITIAL_USER.name}
+          isReadOnly={!currentUserPermissions.canAuditInventory}
         />
       )}
 
@@ -875,6 +879,7 @@ export default function App() {
           editingItem={editingDCDNItem}
           availableProposals={availableDCDNProposals}
           currentUserName={currentUser?.name || INITIAL_USER.name}
+          isReadOnly={!currentUserPermissions.canAuditDCDN}
         />
       )}
 

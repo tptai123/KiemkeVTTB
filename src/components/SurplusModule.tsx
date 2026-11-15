@@ -14,7 +14,7 @@ import {
   ChevronRight,
   Box,
 } from 'lucide-react';
-import { SurplusItem } from '../types';
+import { SurplusItem, RolePermissions } from '../types';
 import { ITEM_GROUPS, SURPLUS_CONDITIONS } from '../mockData';
 
 interface SurplusModuleProps {
@@ -25,6 +25,7 @@ interface SurplusModuleProps {
   onViewDetail: (item: SurplusItem) => void;
   onOpenImport: () => void;
   onShowToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  userPermissions?: RolePermissions;
 }
 
 export const SurplusModule: React.FC<SurplusModuleProps> = ({
@@ -35,6 +36,7 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
   onViewDetail,
   onOpenImport,
   onShowToast,
+  userPermissions,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('Tất cả nhóm');
@@ -79,13 +81,15 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={onOpenImport}
-            className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium rounded-xl border border-emerald-200 transition-colors text-sm flex items-center gap-2"
-          >
-            <Upload className="w-4 h-4" />
-            <span>Import Excel</span>
-          </button>
+          {(!userPermissions || userPermissions.canAddSurplus) && (
+            <button
+              onClick={onOpenImport}
+              className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium rounded-xl border border-emerald-200 transition-colors text-sm flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Import Excel</span>
+            </button>
+          )}
 
           <button
             onClick={handleExportExcel}
@@ -95,13 +99,15 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
             <span>Xuất Excel</span>
           </button>
 
-          <button
-            onClick={onAddItem}
-            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl shadow-md shadow-emerald-500/25 transition-all text-sm flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm hàng dư</span>
-          </button>
+          {(!userPermissions || userPermissions.canAddSurplus) && (
+            <button
+              onClick={onAddItem}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl shadow-md shadow-emerald-500/25 transition-all text-sm flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm hàng dư</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -220,20 +226,24 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => onEditItem(item)}
-                            title="Chỉnh sửa"
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => onDeleteItem(item.id)}
-                            title="Xóa"
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {(!userPermissions || userPermissions.canManageSurplus) && (
+                            <>
+                              <button
+                                onClick={() => onEditItem(item)}
+                                title="Chỉnh sửa"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => onDeleteItem(item.id)}
+                                title="Xóa"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -290,18 +300,22 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
                   >
                     <Eye className="w-3.5 h-3.5" /> Chi tiết
                   </button>
-                  <button
-                    onClick={() => onEditItem(item)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 flex items-center gap-1"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" /> Sửa
-                  </button>
-                  <button
-                    onClick={() => onDeleteItem(item.id)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 flex items-center gap-1"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Xóa
-                  </button>
+                  {(!userPermissions || userPermissions.canManageSurplus) && (
+                    <>
+                      <button
+                        onClick={() => onEditItem(item)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 flex items-center gap-1"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" /> Sửa
+                      </button>
+                      <button
+                        onClick={() => onDeleteItem(item.id)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Xóa
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

@@ -8,6 +8,7 @@ import {
   Camera,
   ChevronDown,
   Trash2,
+  Lock,
 } from 'lucide-react';
 import { InventoryItem } from '../types';
 import { WAREHOUSE_LOCATIONS } from '../mockData';
@@ -19,6 +20,7 @@ interface InventoryModalProps {
   editingItem?: InventoryItem | null;
   availableProposals?: string[];
   currentUserName: string;
+  isReadOnly?: boolean;
 }
 
 // Convert Vietnamese formatted number (e.g. 1.250,5 or 1250,5) to JavaScript number
@@ -117,6 +119,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   editingItem,
   availableProposals = [],
   currentUserName,
+  isReadOnly = false,
 }) => {
   const [formData, setFormData] = useState({
     code: '',
@@ -337,6 +340,13 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1 no-scrollbar">
+          {isReadOnly && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-amber-800 text-xs sm:text-sm font-semibold">
+              <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Chế độ chỉ xem thông tin (Tài khoản hiện tại không có quyền kiểm kê)</span>
+            </div>
+          )}
+
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -481,7 +491,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 <label className="block text-xs font-semibold text-slate-700">
                   SL kiểm kê {!formData.notFound && <span className="text-red-500">*</span>}
                 </label>
-                {editingItem && (
+                {editingItem && !isReadOnly && (
                   <button
                     type="button"
                     onClick={() => {
@@ -504,6 +514,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
               <input
                 type="text"
                 inputMode="decimal"
+                disabled={isReadOnly}
                 value={formData.actualQtyStr}
                 onChange={(e) => {
                   const formatted = formatVNInputLive(e.target.value);
@@ -710,41 +721,45 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             </div>
           )}
 
-          {/* Modal Footer: Checkbox "Không tìm thấy vật tư" bên trái + Nút Hủy / Lưu thay đổi bên phải */}
+          {/* Modal Footer */}
           <div className="sticky bottom-0 bg-white/95 backdrop-blur-xs pt-3 pb-1 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-            <label className="inline-flex items-center gap-2 cursor-pointer select-none text-sm font-medium text-slate-700">
-              <input
-                type="checkbox"
-                checked={formData.notFound}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setFormData({ ...formData, notFound: checked });
-                  if (checked) {
-                    setHasSubmitted(false);
-                    setError('');
-                  }
-                }}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-              />
-              <span>Không tìm thấy vật tư</span>
-            </label>
+            {!isReadOnly ? (
+              <label className="inline-flex items-center gap-2 cursor-pointer select-none text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={formData.notFound}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setFormData({ ...formData, notFound: checked });
+                    if (checked) {
+                      setHasSubmitted(false);
+                      setError('');
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span>Không tìm thấy vật tư</span>
+              </label>
+            ) : <div />}
 
             <div className="flex items-center gap-2.5 ml-auto w-full sm:w-auto">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 sm:flex-initial px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors text-center"
+                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors text-center cursor-pointer"
               >
-                Hủy
+                {isReadOnly ? 'Đóng' : 'Hủy'}
               </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || !isDirty}
-                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 text-center"
-              >
-                <Save className="w-4 h-4" />
-                <span>{isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
-              </button>
+              {!isReadOnly && (
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !isDirty}
+                  className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 text-center cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
+                </button>
+              )}
             </div>
           </div>
         </form>

@@ -8,6 +8,7 @@ import {
   Camera,
   ChevronDown,
   Trash2,
+  Lock,
 } from 'lucide-react';
 import { DCDNItem } from '../types';
 import { WAREHOUSE_LOCATIONS } from '../mockData';
@@ -19,6 +20,7 @@ interface DCDNModalProps {
   editingItem?: DCDNItem | null;
   availableProposals?: string[];
   currentUserName: string;
+  isReadOnly?: boolean;
 }
 
 export const parseVietnameseNumber = (val: string | number): number => {
@@ -139,6 +141,7 @@ export const DCDNModal: React.FC<DCDNModalProps> = ({
   editingItem,
   availableProposals = [],
   currentUserName,
+  isReadOnly = false,
 }) => {
   const [formData, setFormData] = useState({
     code: '',
@@ -349,6 +352,13 @@ export const DCDNModal: React.FC<DCDNModalProps> = ({
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1 no-scrollbar">
+          {isReadOnly && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-amber-800 text-xs sm:text-sm font-semibold">
+              <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Chế độ chỉ xem thông tin (Tài khoản hiện tại không có quyền kiểm kê DCĐN)</span>
+            </div>
+          )}
+
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -401,41 +411,45 @@ export const DCDNModal: React.FC<DCDNModalProps> = ({
                         alt={formData.name}
                         className="max-h-24 sm:max-h-28 w-auto max-w-full object-contain rounded"
                       />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormData((prev) => ({ ...prev, image: '' }));
-                          setSelectedImageFile(null);
-                        }}
-                        title="Xóa hình ảnh"
-                        className="absolute top-0 right-0 p-1 bg-white/95 hover:bg-red-50 text-red-600 rounded-lg border border-slate-200 shadow-2xs"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {!isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({ ...prev, image: '' }));
+                            setSelectedImageFile(null);
+                          }}
+                          title="Xóa hình ảnh"
+                          className="absolute top-0 right-0 p-1 bg-white/95 hover:bg-red-50 text-red-600 rounded-lg border border-slate-200 shadow-2xs"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <span className="text-xs text-slate-400">Chưa có hình ảnh</span>
                   )}
                 </div>
 
-                <div className="w-full bg-slate-100/90 border-t border-slate-200 p-1.5 flex items-center justify-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 py-1 px-1.5 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 shadow-2xs transition-colors"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Tải ảnh</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => cameraInputRef.current?.click()}
-                    className="flex-1 py-1 px-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 shadow-2xs transition-colors"
-                  >
-                    <Camera className="w-3.5 h-3.5" />
-                    <span>Chụp ảnh</span>
-                  </button>
-                </div>
+                {!isReadOnly && (
+                  <div className="w-full bg-slate-100/90 border-t border-slate-200 p-1.5 flex items-center justify-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 py-1 px-1.5 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 shadow-2xs transition-colors"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Tải ảnh</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="flex-1 py-1 px-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 shadow-2xs transition-colors"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Chụp ảnh</span>
+                    </button>
+                  </div>
+                )}
 
                 <input
                   ref={fileInputRef}
@@ -489,7 +503,7 @@ export const DCDNModal: React.FC<DCDNModalProps> = ({
                 <label className="block text-xs font-semibold text-slate-700">
                   SL kiểm {!formData.notFound && <span className="text-red-500">*</span>}
                 </label>
-                {editingItem && (
+                {editingItem && !isReadOnly && (
                   <button
                     type="button"
                     onClick={() => {
@@ -512,6 +526,7 @@ export const DCDNModal: React.FC<DCDNModalProps> = ({
               <input
                 type="text"
                 inputMode="decimal"
+                disabled={isReadOnly}
                 value={formData.actualQtyStr}
                 onChange={(e) => {
                   const formatted = formatVNInputLive(e.target.value);
@@ -686,39 +701,43 @@ export const DCDNModal: React.FC<DCDNModalProps> = ({
 
           {/* Modal Footer */}
           <div className="sticky bottom-0 bg-white/95 backdrop-blur-xs pt-3 pb-1 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-            <label className="inline-flex items-center gap-2 cursor-pointer select-none text-sm font-medium text-slate-700">
-              <input
-                type="checkbox"
-                checked={formData.notFound}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setFormData({ ...formData, notFound: checked });
-                  if (checked) {
-                    setHasSubmitted(false);
-                    setError('');
-                  }
-                }}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-              />
-              <span>Không tìm thấy dụng cụ (Cần tìm)</span>
-            </label>
+            {!isReadOnly ? (
+              <label className="inline-flex items-center gap-2 cursor-pointer select-none text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={formData.notFound}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setFormData({ ...formData, notFound: checked });
+                    if (checked) {
+                      setHasSubmitted(false);
+                      setError('');
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span>Không tìm thấy dụng cụ (Cần tìm)</span>
+              </label>
+            ) : <div />}
 
             <div className="flex items-center gap-2.5 ml-auto w-full sm:w-auto">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 sm:flex-initial px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors text-center"
+                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors text-center cursor-pointer"
               >
-                Hủy
+                {isReadOnly ? 'Đóng' : 'Hủy'}
               </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || !isDirty}
-                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 text-center"
-              >
-                <Save className="w-4 h-4" />
-                <span>{isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
-              </button>
+              {!isReadOnly && (
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !isDirty}
+                  className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 text-center cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
+                </button>
+              )}
             </div>
           </div>
         </form>

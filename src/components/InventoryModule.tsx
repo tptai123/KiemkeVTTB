@@ -14,7 +14,7 @@ import {
   MoreVertical,
   RotateCcw,
 } from 'lucide-react';
-import { InventoryItem } from '../types';
+import { InventoryItem, RolePermissions } from '../types';
 import { ImageZoomModal } from './ImageZoomModal';
 
 interface InventoryModuleProps {
@@ -24,6 +24,7 @@ interface InventoryModuleProps {
   onStatFilterChange?: (filter: 'all' | 'audited' | 'pending' | 'discrepancy' | 'needed') => void;
   onOpenImport: () => void;
   onExportExcel: () => void;
+  userPermissions?: RolePermissions;
 }
 
 // Singleton formatter — created once at module scope, reused across all renders
@@ -321,7 +322,9 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
   onStatFilterChange,
   onOpenImport,
   onExportExcel,
+  userPermissions,
 }) => {
+  const canExcel = userPermissions ? userPermissions.canExcelInventory : true;
   // Screen size check for mobile layout
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
@@ -598,44 +601,46 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
           </button>
 
           {/* Menu thao tác khác: Import / Xuất Excel */}
-          <div className="relative shrink-0" ref={mobileActionMenuRef}>
-            <button
-              type="button"
-              onClick={() => setIsMobileActionMenuOpen((prev) => !prev)}
-              className="p-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
-              title="Thao tác khác"
-              aria-label="Thao tác khác"
-            >
-              <MoreVertical className="w-5 h-5" />
-            </button>
+          {canExcel && (
+            <div className="relative shrink-0" ref={mobileActionMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsMobileActionMenuOpen((prev) => !prev)}
+                className="p-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+                title="Thao tác khác"
+                aria-label="Thao tác khác"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
 
-            {isMobileActionMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-1 divide-y divide-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileActionMenuOpen(false);
-                    onOpenImport();
-                  }}
-                  className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                >
-                  <Upload className="w-4 h-4 text-blue-600" />
-                  <span>Import Excel</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileActionMenuOpen(false);
-                    onExportExcel();
-                  }}
-                  className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4 text-emerald-700" />
-                  <span>Xuất Excel</span>
-                </button>
-              </div>
-            )}
-          </div>
+              {isMobileActionMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-44 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-1 divide-y divide-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileActionMenuOpen(false);
+                      onOpenImport();
+                    }}
+                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4 text-blue-600" />
+                    <span>Import Excel</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileActionMenuOpen(false);
+                      onExportExcel();
+                    }}
+                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4 text-emerald-700" />
+                    <span>Xuất Excel</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -893,25 +898,29 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
           </div>
 
           {/* Buttons: Import Excel & Xuất Excel */}
-          <button
-            type="button"
-            onClick={onOpenImport}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors text-[14px] flex items-center justify-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap"
-            title="Import danh sách từ file Excel"
-          >
-            <Upload className="w-4 h-4" />
-            <span>Import Excel</span>
-          </button>
+          {canExcel && (
+            <>
+              <button
+                type="button"
+                onClick={onOpenImport}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors text-[14px] flex items-center justify-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap"
+                title="Import danh sách từ file Excel"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Import Excel</span>
+              </button>
 
-          <button
-            type="button"
-            onClick={onExportExcel}
-            className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl transition-colors text-[14px] flex items-center justify-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap"
-            title="Xuất danh sách ra file Excel"
-          >
-            <Download className="w-4 h-4" />
-            <span>Xuất Excel</span>
-          </button>
+              <button
+                type="button"
+                onClick={onExportExcel}
+                className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl transition-colors text-[14px] flex items-center justify-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap"
+                title="Xuất danh sách ra file Excel"
+              >
+                <Download className="w-4 h-4" />
+                <span>Xuất Excel</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
