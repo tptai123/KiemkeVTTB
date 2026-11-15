@@ -305,31 +305,34 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   const showRow5 = formData.actualQtyStr.trim() !== '' && formData.auditedAt.trim() !== '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-fade-in text-slate-800">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in text-slate-800">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[92vh] sm:max-h-[90vh]">
         {/* Modal Header: Nền xanh biển */}
-        <div className="px-5 py-3.5 bg-sky-600 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-sky-700/70 rounded-xl text-white">
-              <Box className="w-5 h-5" />
+        <div className="px-5 pt-3 pb-3.5 bg-sky-600 text-white flex flex-col shrink-0">
+          <div className="w-10 h-1 bg-white/40 rounded-full mx-auto mb-2 sm:hidden" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-sky-700/70 rounded-xl text-white">
+                <Box className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base sm:text-lg leading-tight">
+                  Thông tin vật tư kiểm kê
+                </h3>
+                <p className="text-xs text-sky-100">
+                  Xem và cập nhật thông tin kiểm kê, hình ảnh và đề xuất xử lý
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-base sm:text-lg leading-tight">
-                Thông tin vật tư kiểm kê
-              </h3>
-              <p className="text-xs text-sky-100">
-                Xem và cập nhật thông tin kiểm kê, hình ảnh và đề xuất xử lý
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-sky-100 hover:text-white hover:bg-sky-700 transition-colors"
+              aria-label="Đóng"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-sky-100 hover:text-white hover:bg-sky-700 transition-colors"
-            aria-label="Đóng"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Modal Body */}
@@ -474,9 +477,30 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                SL kiểm kê {!formData.notFound && <span className="text-red-500">*</span>}
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  SL kiểm kê {!formData.notFound && <span className="text-red-500">*</span>}
+                </label>
+                {editingItem && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const bookFormatted = formatVietnameseNumber(editingItem.bookQty);
+                      setFormData((prev) => ({
+                        ...prev,
+                        actualQtyStr: bookFormatted,
+                        notFound: false,
+                      }));
+                      setHasSubmitted(false);
+                      setError('');
+                    }}
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded transition-colors"
+                    title="Điền nhanh bằng SL sổ sách (SL tồn)"
+                  >
+                    Khớp số tồn
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 inputMode="decimal"
@@ -687,7 +711,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
           )}
 
           {/* Modal Footer: Checkbox "Không tìm thấy vật tư" bên trái + Nút Hủy / Lưu thay đổi bên phải */}
-          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="sticky bottom-0 bg-white/95 backdrop-blur-xs pt-3 pb-1 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <label className="inline-flex items-center gap-2 cursor-pointer select-none text-sm font-medium text-slate-700">
               <input
                 type="checkbox"
@@ -705,18 +729,18 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
               <span>Không tìm thấy vật tư</span>
             </label>
 
-            <div className="flex items-center gap-2.5 ml-auto">
+            <div className="flex items-center gap-2.5 ml-auto w-full sm:w-auto">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
+                className="flex-1 sm:flex-initial px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors text-center"
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || !isDirty}
-                className="px-5 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed shadow-md shadow-blue-500/25 transition-all flex items-center gap-2"
+                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 text-center"
               >
                 <Save className="w-4 h-4" />
                 <span>{isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}</span>

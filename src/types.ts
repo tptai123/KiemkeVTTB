@@ -20,6 +20,26 @@ export interface InventoryItem {
   auditor?: string;
 }
 
+export interface DCDNItem {
+  id: string;
+  code: string;
+  name: string;
+  group: string;
+  model: string;
+  unit: string;
+  warehouse: string; // Cột Kho
+  location: string;  // Cột Vị trí
+  bookQty: number;   // SL tồn (SL sổ sách)
+  actualQty: number | null; // null = Chưa kiểm kê
+  proposal?: string; // Cột Đề xuất
+  proposalReason?: string; // Lý do xử lý
+  notFound?: boolean; // Không tìm thấy (Cần tìm)
+  image?: string; // Hình ảnh dụng cụ
+  notes: string;
+  auditedAt?: string;
+  auditor?: string;
+}
+
 export interface SurplusItem {
   id: string;
   code: string;
@@ -38,9 +58,14 @@ export interface SurplusItem {
 export type InventoryStatus = 'all' | 'match' | 'missing' | 'surplus' | 'pending';
 
 export interface UserInfo {
-  name: string;
+  id?: string;
+  authId?: string;
+  name: string; // ho_va_ten
   email: string;
-  role: string;
-  department: string;
-  avatar: string;
+  role: string; // vai_tro
+  department: string; // phong_ban
+  phone?: string; // so_dien_thoai
+  avatar?: string; // avatar_url
+  status?: string; // trang_thai
+  createdAt?: string;
 }

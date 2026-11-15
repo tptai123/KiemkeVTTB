@@ -3,16 +3,25 @@ import * as XLSX from 'xlsx';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { InventoryModule } from './components/InventoryModule';
+import { DCDNModule } from './components/DCDNModule';
 import { SurplusModule } from './components/SurplusModule';
 import { UsersModule } from './components/UsersModule';
 import { PermissionsModule } from './components/PermissionsModule';
 import { InventoryModal } from './components/InventoryModal';
+import { DCDNModal } from './components/DCDNModal';
 import { SurplusModal } from './components/SurplusModal';
 import { ImportModal } from './components/ImportModal';
 import { DetailModal } from './components/DetailModal';
 import { Toast, ToastMessage } from './components/Toast';
-import { INITIAL_INVENTORY_ITEMS, INITIAL_SURPLUS_ITEMS, INITIAL_USER } from './mockData';
-import { InventoryItem, SurplusItem } from './types';
+import { LoginScreen } from './components/LoginScreen';
+import { getSavedSessionUser, signOut as authSignOut } from './services/authService';
+import {
+  INITIAL_INVENTORY_ITEMS,
+  INITIAL_DCDN_ITEMS,
+  INITIAL_SURPLUS_ITEMS,
+  INITIAL_USER,
+} from './mockData';
+import { InventoryItem, DCDNItem, SurplusItem, UserInfo } from './types';
 import { isSupabaseConfigured } from './lib/supabase';
 import {
   fetchInventoryItems,
@@ -22,11 +31,46 @@ import {
   uploadInventoryImageToSupabase,
   mapRowToInventoryItem,
 } from './services/inventoryService';
+import {
+  fetchDCDNItems,
+  updateDCDNItemInSupabase,
+  createDCDNItemInSupabase,
+  bulkCreateDCDNItemsInSupabase,
+  uploadDCDNImageToSupabase,
+} from './services/dcdnService';
 import { supabase } from './lib/supabase';
 
 export default function App() {
-  const [activeModule, setActiveModule] = useState<'inventory' | 'surplus' | 'users' | 'permissions'>('inventory');
+  const [activeModule, setActiveModule] = useState<'inventory' | 'dcdn' | 'surplus' | 'users' | 'permissions'>('inventory');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // User Auth State
+  const [currentUser, setCurrentUser] = useState<UserInfo | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
+  // Check existing session on mount
+  useEffect(() => {
+    let isMounted = true;
+    getSavedSessionUser()
+      .then((user) => {
+        if (isMounted) {
+          setCurrentUser(user);
+          setIsAuthChecking(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setIsAuthChecking(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    await authSignOut();
+    setCurrentUser(null);
+    showToast('Đã đăng xuất khỏi hệ thống', 'info');
+  };
 
   // Sidebar collapsed state with localStorage persistence
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -38,26 +82,38 @@ export default function App() {
     localStorage.setItem('vttb_sidebar_collapsed', JSON.stringify(isCollapsed));
   }, [isCollapsed]);
 
-  // Data states
+  // Data states - VTTB
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>(
     isSupabaseConfigured ? [] : INITIAL_INVENTORY_ITEMS
   );
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [isLoadingInventory, setIsLoadingInventory] = useState(isSupabaseConfigured);
+
+  // Data states - DCĐN
+  const [dcdnItems, setDcdnItems] = useState<DCDNItem[]>(
+    isSupabaseConfigured ? [] : INITIAL_DCDN_ITEMS
+  );
+  const [isDCDNConnected, setIsDCDNConnected] = useState(false);
+  const [isLoadingDCDN, setIsLoadingDCDN] = useState(isSupabaseConfigured);
+
   const [surplusItems, setSurplusItems] = useState<SurplusItem[]>(INITIAL_SURPLUS_ITEMS);
 
-  // Stat filter state for inventory navbar
+  // Stat filter state for navbar
   const [statFilter, setStatFilter] = useState<'all' | 'audited' | 'pending' | 'discrepancy' | 'needed'>('all');
+  const [dcdnStatFilter, setDcdnStatFilter] = useState<'all' | 'audited' | 'pending' | 'discrepancy' | 'needed'>('all');
 
   // Modal states
   const [isInvModalOpen, setIsInvModalOpen] = useState(false);
   const [editingInvItem, setEditingInvItem] = useState<InventoryItem | null>(null);
 
+  const [isDCDNModalOpen, setIsDCDNModalOpen] = useState(false);
+  const [editingDCDNItem, setEditingDCDNItem] = useState<DCDNItem | null>(null);
+
   const [isSurModalOpen, setIsSurModalOpen] = useState(false);
   const [editingSurItem, setEditingSurItem] = useState<SurplusItem | null>(null);
 
   const [isImportOpen, setIsImportOpen] = useState(false);
-  const [importModuleType, setImportModuleType] = useState<'inventory' | 'surplus'>('inventory');
+  const [importModuleType, setImportModuleType] = useState<'inventory' | 'dcdn' | 'surplus'>('inventory');
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedDetailItem, setSelectedDetailItem] = useState<InventoryItem | SurplusItem | null>(null);
@@ -119,15 +175,9 @@ export default function App() {
   }, []);
 
   // Supabase Realtime — subscribe to kiem_ke_vttb changes after connected
-  const realtimeToastShown = useRef(false);
   useEffect(() => {
     const client = supabase;
     if (!isSupabaseConnected || !client) return;
-
-    if (!realtimeToastShown.current) {
-      showToast('Đã kết nối Supabase · Realtime bật', 'success');
-      realtimeToastShown.current = true;
-    }
 
     const channel = client
       .channel('kiem_ke_vttb_realtime')
@@ -158,6 +208,61 @@ export default function App() {
       client.removeChannel(channel);
     };
   }, [isSupabaseConnected]);
+
+  // Memoize available proposals for DCDN
+  const availableDCDNProposals = useMemo(
+    () => dcdnItems.map((i) => i.proposal || '').filter((p) => p.trim() !== ''),
+    [dcdnItems]
+  );
+
+  // Load DCĐN data from Supabase on mount
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    let isMounted = true;
+    const loadDCDN = async () => {
+      setIsLoadingDCDN(true);
+      try {
+        const data = await fetchDCDNItems();
+        if (!isMounted) return;
+        setDcdnItems(data);
+        setIsDCDNConnected(true);
+      } catch (err: unknown) {
+        if (!isMounted) return;
+        console.warn('Chưa kết nối bảng kiem_ke_dcdn, sử dụng dữ liệu mẫu:', err);
+        setIsDCDNConnected(false);
+        setDcdnItems(INITIAL_DCDN_ITEMS);
+      } finally {
+        if (isMounted) setIsLoadingDCDN(false);
+      }
+    };
+
+    loadDCDN();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Supabase Realtime for kiem_ke_dcdn
+  useEffect(() => {
+    const client = supabase;
+    if (!isDCDNConnected || !client) return;
+
+    const channel = client
+      .channel('kiem_ke_dcdn_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'kiem_ke_dcdn' },
+        () => {
+          fetchDCDNItems().then((items) => setDcdnItems(items)).catch(() => {});
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, [isDCDNConnected]);
 
   // --- INVENTORY HANDLERS ---
   const handleSaveInventory = async (
@@ -230,7 +335,7 @@ export default function App() {
             image: payloadToSave.image,
             notes: payloadToSave.notes || '',
             auditedAt: payloadToSave.auditedAt,
-            auditor: payloadToSave.auditor || INITIAL_USER.name,
+            auditor: payloadToSave.auditor || currentUser?.name || INITIAL_USER.name,
           });
           setInventoryItems((prev) => [created, ...prev]);
           showToast(`Đã thêm mới vật tư ${created.code} lên Supabase`);
@@ -253,13 +358,117 @@ export default function App() {
           image: payloadToSave.image,
           notes: itemData.notes || '',
           auditedAt: itemData.actualQty !== null ? new Date().toLocaleString('vi-VN') : undefined,
-          auditor: INITIAL_USER.name,
+          auditor: currentUser?.name || INITIAL_USER.name,
         };
         setInventoryItems((prev) => [newItem, ...prev]);
         showToast(`Đã thêm mới vật tư ${newItem.code} thành công`);
       }
     }
     setEditingInvItem(null);
+  };
+
+  // --- DCDN HANDLERS ---
+  const handleSaveDCDN = async (
+    itemData: Partial<DCDNItem>,
+    imageFile?: File | null
+  ) => {
+    let resolvedImage = itemData.image;
+    const itemCodeForFile = editingDCDNItem
+      ? editingDCDNItem.code
+      : itemData.code || `DC-${Date.now()}`;
+
+    if (isDCDNConnected && imageFile) {
+      try {
+        resolvedImage = await uploadDCDNImageToSupabase(imageFile, itemCodeForFile);
+      } catch (uploadErr) {
+        console.error('Supabase DCDN image upload error:', uploadErr);
+        showToast('Lỗi tải ảnh dụng cụ lên Supabase', 'error');
+      }
+    }
+
+    const payloadToSave: Partial<DCDNItem> = {
+      ...itemData,
+      image: resolvedImage,
+    };
+
+    if (editingDCDNItem) {
+      if (isDCDNConnected) {
+        try {
+          const updated = await updateDCDNItemInSupabase(editingDCDNItem.id, payloadToSave);
+          setDcdnItems((prev) =>
+            prev.map((item) => (item.id === editingDCDNItem.id ? updated : item))
+          );
+          showToast(`Đã cập nhật dụng cụ ${itemData.code} lên Supabase`);
+        } catch (err) {
+          console.error('Supabase update DCDN error:', err);
+          setDcdnItems((prev) =>
+            prev.map((item) =>
+              item.id === editingDCDNItem.id
+                ? ({ ...item, ...payloadToSave } as DCDNItem)
+                : item
+            )
+          );
+          showToast(`Lỗi lưu Supabase cho dụng cụ ${editingDCDNItem.code}`, 'error');
+        }
+      } else {
+        setDcdnItems((prev) =>
+          prev.map((item) =>
+            item.id === editingDCDNItem.id
+              ? ({ ...item, ...payloadToSave } as DCDNItem)
+              : item
+          )
+        );
+        showToast(`Đã cập nhật thành công dụng cụ ${itemData.code}`);
+      }
+    } else {
+      if (isDCDNConnected) {
+        try {
+          const created = await createDCDNItemInSupabase({
+            code: itemCodeForFile,
+            name: payloadToSave.name || 'Dụng cụ mới',
+            group: payloadToSave.group || 'Dụng cụ đo nghiệm',
+            model: payloadToSave.model || '',
+            unit: payloadToSave.unit || 'Bộ',
+            warehouse: payloadToSave.warehouse || 'Kho DCĐN',
+            location: payloadToSave.location || 'Tủ đo lường A1',
+            bookQty: payloadToSave.bookQty || 1,
+            actualQty: payloadToSave.actualQty !== undefined ? payloadToSave.actualQty : null,
+            proposal: payloadToSave.proposal || '',
+            proposalReason: payloadToSave.proposalReason || '',
+            notFound: Boolean(payloadToSave.notFound),
+            image: payloadToSave.image,
+            notes: payloadToSave.notes || '',
+            auditedAt: payloadToSave.auditedAt,
+            auditor: payloadToSave.auditor || currentUser?.name || INITIAL_USER.name,
+          });
+          setDcdnItems((prev) => [created, ...prev]);
+          showToast(`Đã thêm mới dụng cụ ${created.code} lên Supabase`);
+        } catch (err) {
+          console.error('Supabase insert DCDN error:', err);
+          showToast('Lỗi thêm mới dụng cụ lên Supabase', 'error');
+        }
+      } else {
+        const newItem: DCDNItem = {
+          id: `dcdn-${Date.now()}`,
+          code: itemData.code || 'DC-NEW',
+          name: itemData.name || 'Dụng cụ mới',
+          group: itemData.group || 'Dụng cụ đo nghiệm',
+          model: itemData.model || '',
+          unit: itemData.unit || 'Bộ',
+          warehouse: itemData.warehouse || 'Kho DCĐN',
+          location: itemData.location || 'Tủ đo lường A1',
+          bookQty: itemData.bookQty || 1,
+          actualQty: itemData.actualQty !== undefined ? itemData.actualQty : null,
+          image: payloadToSave.image,
+          notes: itemData.notes || '',
+          auditedAt: itemData.actualQty !== null ? new Date().toLocaleString('vi-VN') : undefined,
+          auditor: currentUser?.name || INITIAL_USER.name,
+        };
+        setDcdnItems((prev) => [newItem, ...prev]);
+        showToast(`Đã thêm mới dụng cụ ${newItem.code} thành công`);
+      }
+    }
+    setEditingDCDNItem(null);
   };
 
   // --- SURPLUS HANDLERS ---
@@ -327,8 +536,91 @@ export default function App() {
     }
   };
 
+  const handleImportDCDNItems = async (itemsToImport: Partial<DCDNItem>[]) => {
+    if (itemsToImport.length === 0) return;
+
+    if (isDCDNConnected) {
+      const insertedCount = await bulkCreateDCDNItemsInSupabase(itemsToImport);
+      const reloaded = await fetchDCDNItems();
+      setDcdnItems(reloaded);
+      showToast(`Đã import thành công ${insertedCount} dụng cụ lên Supabase!`, 'success');
+    } else {
+      const now = Date.now();
+      const localCreated: DCDNItem[] = itemsToImport.map((item, idx) => ({
+        id: `dcdn-imp-${now}-${idx}`,
+        code: item.code || `DC-${now}-${idx}`,
+        name: item.name || 'Dụng cụ mới',
+        group: item.group || 'Dụng cụ đo nghiệm',
+        model: item.model || '',
+        unit: item.unit || 'Bộ',
+        warehouse: item.warehouse || 'Kho DCĐN',
+        location: item.location || '',
+        bookQty: item.bookQty ?? 0,
+        actualQty: null,
+        proposal: '',
+        notes: '',
+      }));
+      setDcdnItems((prev) => [...localCreated, ...prev]);
+      showToast(`Đã import thành công ${itemsToImport.length} dụng cụ!`, 'success');
+    }
+  };
+
   const handleImportSuccess = (count: number) => {
-    showToast(`Đã import thành công ${count} bản ghi vào ${importModuleType === 'inventory' ? 'Kiểm kê VTTB' : 'Hàng dư'}`, 'success');
+    const modLabel =
+      importModuleType === 'inventory'
+        ? 'Kiểm kê VTTB'
+        : importModuleType === 'dcdn'
+        ? 'Kiểm kê DCĐN'
+        : 'Hàng dư';
+    showToast(`Đã import thành công ${count} bản ghi vào ${modLabel}`, 'success');
+  };
+
+  const handleExportDCDNExcel = () => {
+    if (dcdnItems.length === 0) {
+      showToast('Không có dữ liệu DCĐN để xuất Excel', 'info');
+      return;
+    }
+
+    const exportData = dcdnItems.map((item, index) => ({
+      Stt: index + 1,
+      'Mã DCĐN': item.code || '',
+      'Tên dụng cụ đo nghiệm / đồ nghề': item.name || '',
+      Kho: item.warehouse || '',
+      ĐVT: item.unit || '',
+      'SL tồn': item.bookQty ?? 0,
+      'SL kiểm': item.actualQty !== null && item.actualQty !== undefined ? item.actualQty : '',
+      'Vị trí': item.location || '',
+      'Ghi chú': item.notes || '',
+      'Đề xuất xử lý': item.proposal || '',
+      'Lý do đề xuất': item.proposalReason || '',
+      'Tìm hàng': item.notFound ? 'Có' : '',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    worksheet['!cols'] = [
+      { wch: 6 },
+      { wch: 20 },
+      { wch: 42 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 24 },
+      { wch: 28 },
+      { wch: 20 },
+      { wch: 28 },
+      { wch: 12 },
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Kiem_Ke_DCDN');
+
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yy = String(now.getFullYear()).slice(-2);
+    XLSX.writeFile(workbook, `Kiem_Ke_DCDN_${dd}-${mm}-${yy}.xlsx`);
+
+    showToast(`Đã xuất ${exportData.length} dòng DCĐN ra file Excel thành công!`, 'success');
   };
 
   const handleExportExcel = () => {
@@ -379,10 +671,36 @@ export default function App() {
     showToast(`Đã xuất ${exportData.length} dòng ra file Excel thành công!`, 'success');
   };
 
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+        <div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <div className="text-white text-xs sm:text-sm font-semibold tracking-wide">
+          Đang kiểm tra phiên làm việc...
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <>
+        <LoginScreen
+          onLoginSuccess={(user) => {
+            setCurrentUser(user);
+            showToast(`Xin chào ${user.name}!`, 'success');
+          }}
+          onShowToast={showToast}
+        />
+        <Toast toasts={toasts} onClose={removeToast} />
+      </>
+    );
+  }
+
   return (
     <div
       className={`bg-slate-50 flex font-sans text-slate-800 antialiased selection:bg-blue-600 selection:text-white ${
-        activeModule === 'inventory' ? 'h-screen overflow-hidden' : 'min-h-screen'
+        activeModule === 'inventory' || activeModule === 'dcdn' ? 'h-screen overflow-hidden' : 'min-h-screen'
       }`}
     >
       {/* Sidebar Navigation */}
@@ -398,21 +716,26 @@ export default function App() {
       {/* Main Content Area */}
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ease-in-out min-w-0 ${
-          activeModule === 'inventory' ? 'h-full overflow-hidden' : ''
+          activeModule === 'inventory' || activeModule === 'dcdn' ? 'h-full overflow-hidden' : ''
         } ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}
       >
         <Header
           activeModule={activeModule}
           setIsMobileOpen={setIsMobileOpen}
           setIsCollapsed={setIsCollapsed}
-          inventoryItems={inventoryItems}
-          onStatClick={(filter) => setStatFilter(filter)}
-          activeStatFilter={statFilter}
+          inventoryItems={activeModule === 'dcdn' ? dcdnItems : inventoryItems}
+          onStatClick={(filter) => {
+            if (activeModule === 'dcdn') setDcdnStatFilter(filter);
+            else setStatFilter(filter);
+          }}
+          activeStatFilter={activeModule === 'dcdn' ? dcdnStatFilter : statFilter}
+          currentUser={currentUser}
+          onLogout={handleLogout}
         />
 
         <main
           className={`flex-1 p-1 sm:p-2 lg:p-2.5 max-w-[1920px] w-full mx-auto ${
-            activeModule === 'inventory' ? 'min-h-0 overflow-hidden flex flex-col' : ''
+            activeModule === 'inventory' || activeModule === 'dcdn' ? 'min-h-0 overflow-hidden flex flex-col' : ''
           }`}
         >
           {activeModule === 'inventory' && (
@@ -423,11 +746,29 @@ export default function App() {
                 setIsInvModalOpen(true);
               }}
               statFilter={statFilter}
+              onStatFilterChange={setStatFilter}
               onOpenImport={() => {
                 setImportModuleType('inventory');
                 setIsImportOpen(true);
               }}
               onExportExcel={handleExportExcel}
+            />
+          )}
+
+          {activeModule === 'dcdn' && (
+            <DCDNModule
+              items={dcdnItems}
+              onEditItem={(item) => {
+                setEditingDCDNItem(item);
+                setIsDCDNModalOpen(true);
+              }}
+              statFilter={dcdnStatFilter}
+              onStatFilterChange={setDcdnStatFilter}
+              onOpenImport={() => {
+                setImportModuleType('dcdn');
+                setIsImportOpen(true);
+              }}
+              onExportExcel={handleExportDCDNExcel}
             />
           )}
 
@@ -470,7 +811,18 @@ export default function App() {
           onSave={handleSaveInventory}
           editingItem={editingInvItem}
           availableProposals={availableProposals}
-          currentUserName={INITIAL_USER.name}
+          currentUserName={currentUser?.name || INITIAL_USER.name}
+        />
+      )}
+
+      {isDCDNModalOpen && (
+        <DCDNModal
+          isOpen={isDCDNModalOpen}
+          onClose={() => setIsDCDNModalOpen(false)}
+          onSave={handleSaveDCDN}
+          editingItem={editingDCDNItem}
+          availableProposals={availableDCDNProposals}
+          currentUserName={currentUser?.name || INITIAL_USER.name}
         />
       )}
 
@@ -485,10 +837,26 @@ export default function App() {
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         onImportSuccess={handleImportSuccess}
-        moduleName={importModuleType === 'inventory' ? 'Kiểm Kê VTTB' : 'Hàng Dư'}
-        existingItems={importModuleType === 'inventory' ? inventoryItems : []}
+        moduleName={
+          importModuleType === 'inventory'
+            ? 'Kiểm Kê VTTB'
+            : importModuleType === 'dcdn'
+            ? 'Kiểm kê DCĐN'
+            : 'Hàng Dư'
+        }
+        existingItems={
+          importModuleType === 'inventory'
+            ? inventoryItems
+            : importModuleType === 'dcdn'
+            ? dcdnItems
+            : []
+        }
         onImportInventoryItems={
-          importModuleType === 'inventory' ? handleImportInventoryItems : undefined
+          importModuleType === 'inventory'
+            ? handleImportInventoryItems
+            : importModuleType === 'dcdn'
+            ? handleImportDCDNItems
+            : undefined
         }
       />
 

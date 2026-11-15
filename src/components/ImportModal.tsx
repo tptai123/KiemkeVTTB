@@ -16,8 +16,8 @@ interface ImportModalProps {
   onClose: () => void;
   onImportSuccess: (count: number) => void;
   moduleName: string;
-  existingItems?: InventoryItem[];
-  onImportInventoryItems?: (items: Partial<InventoryItem>[]) => Promise<void> | void;
+  existingItems?: { code?: string; name?: string; warehouse?: string }[];
+  onImportInventoryItems?: (items: any[]) => Promise<void> | void;
 }
 
 interface PreviewRowInfo {
@@ -74,7 +74,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   const [validNewItems, setValidNewItems] = useState<Partial<InventoryItem>[]>([]);
   const [previewRows, setPreviewRows] = useState<PreviewRowInfo[]>([]);
 
-  const isInventoryModule = moduleName === 'Kiểm Kê VTTB' && Boolean(onImportInventoryItems);
+  const isInventoryModule = (moduleName === 'Kiểm Kê VTTB' || moduleName.includes('DCĐN')) && Boolean(onImportInventoryItems);
 
   // Build O(1) lookup Set of (Mã vật tư, Tên vật tư, Kho) from existing table data
   const existingKeySet = useMemo(() => {
@@ -108,26 +108,48 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   if (!isOpen) return null;
 
   const handleDownloadTemplate = () => {
-    const templateData = [
-      {
-        Stt: 1,
-        'Mã vật tư': '1.02.05.101.203.01.999',
-        'Tên vật tư': 'Máy in laser HP LaserJet Pro M404dn',
-        Kho: 'Kho A',
-        ĐVT: 'Chiếc',
-        'Số lượng sổ sách': 10,
-        'Vị trí': 'Tầng 1 - Kệ IT 01',
-      },
-      {
-        Stt: 2,
-        'Mã vật tư': '1.02.05.101.203.01.998',
-        'Tên vật tư': 'Switch Cisco Catalyst 2960X 24 Port',
-        Kho: 'Kho B',
-        ĐVT: 'Bộ',
-        'Số lượng sổ sách': 5,
-        'Vị trí': 'Tầng 2 - Tủ mạng 02',
-      },
-    ];
+    const isDCDN = moduleName.includes('DCĐN');
+    const templateData = isDCDN
+      ? [
+          {
+            Stt: 1,
+            'Mã DCĐN': 'DC-OTDR-001',
+            'Tên dụng cụ đo nghiệm / đồ nghề': 'Máy đo quang OTDR Yokogawa AQ7280',
+            Kho: 'Kho DCĐN',
+            ĐVT: 'Bộ',
+            'Số lượng tồn': 3,
+            'Vị trí': 'Tủ đo lường A1',
+          },
+          {
+            Stt: 2,
+            'Mã DCĐN': 'DC-FUSION-002',
+            'Tên dụng cụ đo nghiệm / đồ nghề': 'Máy hàn sợi quang Fujikura 90S+',
+            Kho: 'Kho DCĐN',
+            ĐVT: 'Bộ',
+            'Số lượng tồn': 2,
+            'Vị trí': 'Tủ đo lường A2',
+          },
+        ]
+      : [
+          {
+            Stt: 1,
+            'Mã vật tư': '1.02.05.101.203.01.999',
+            'Tên vật tư': 'Máy in laser HP LaserJet Pro M404dn',
+            Kho: 'Kho A',
+            ĐVT: 'Chiếc',
+            'Số lượng sổ sách': 10,
+            'Vị trí': 'Tầng 1 - Kệ IT 01',
+          },
+          {
+            Stt: 2,
+            'Mã vật tư': '1.02.05.101.203.01.998',
+            'Tên vật tư': 'Switch Cisco Catalyst 2960X 24 Port',
+            Kho: 'Kho B',
+            ĐVT: 'Bộ',
+            'Số lượng sổ sách': 5,
+            'Vị trí': 'Tầng 2 - Tủ mạng 02',
+          },
+        ];
 
     const worksheet = XLSX.utils.json_to_sheet(templateData);
     worksheet['!cols'] = [
@@ -139,9 +161,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       { wch: 18 },
       { wch: 24 },
     ];
+    const sheetTitle = isDCDN ? 'Mau_Kiem_Ke_DCDN' : 'Mau_Kiem_Ke_VTTB';
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Mau_Kiem_Ke_VTTB');
-    XLSX.writeFile(workbook, 'Mau_Import_Kiem_Ke_VTTB.xlsx');
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetTitle);
+    XLSX.writeFile(workbook, `${sheetTitle}.xlsx`);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,20 +210,33 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         }
 
         const code = String(
-          normalizedRow['mavattu'] ?? normalizedRow['code'] ?? ''
+          normalizedRow['mavattu'] ??
+            normalizedRow['madcdn'] ??
+            normalizedRow['madungcu'] ??
+            normalizedRow['mahang'] ??
+            normalizedRow['code'] ??
+            ''
         ).trim();
         const name = String(
-          normalizedRow['tenvattu'] ?? normalizedRow['name'] ?? ''
+          normalizedRow['tenvattu'] ??
+            normalizedRow['tendcdn'] ??
+            normalizedRow['tendungcu'] ??
+            normalizedRow['tendungcudonghiemdonghe'] ??
+            normalizedRow['tenhang'] ??
+            normalizedRow['name'] ??
+            ''
         ).trim();
         const warehouse = String(
           normalizedRow['kho'] ?? normalizedRow['warehouse'] ?? ''
         ).trim();
         const unit = String(
-          normalizedRow['dvt'] ?? normalizedRow['donvitinh'] ?? normalizedRow['unit'] ?? 'Chiếc'
+          normalizedRow['dvt'] ?? normalizedRow['donvitinh'] ?? normalizedRow['unit'] ?? 'Bộ'
         ).trim();
         const bookQty = parseNumericCell(
           normalizedRow['soluongsosach'] ??
             normalizedRow['slsosach'] ??
+            normalizedRow['soluongton'] ??
+            normalizedRow['slton'] ??
             normalizedRow['bookqty'] ??
             0
         );

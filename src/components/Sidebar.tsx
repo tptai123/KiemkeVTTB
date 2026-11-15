@@ -1,14 +1,15 @@
 import React from 'react';
 import {
   ClipboardList,
+  Wrench,
   PackagePlus,
   Users,
   Shield,
 } from 'lucide-react';
 
 interface SidebarProps {
-  activeModule: 'inventory' | 'surplus' | 'users' | 'permissions';
-  setActiveModule: (module: 'inventory' | 'surplus' | 'users' | 'permissions') => void;
+  activeModule: 'inventory' | 'dcdn' | 'surplus' | 'users' | 'permissions';
+  setActiveModule: (module: 'inventory' | 'dcdn' | 'surplus' | 'users' | 'permissions') => void;
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
   isMobileOpen: boolean;
@@ -27,6 +28,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'inventory' as const,
       label: 'Kiểm kê VTTB',
       icon: ClipboardList,
+    },
+    {
+      id: 'dcdn' as const,
+      label: 'Kiểm kê DCĐN',
+      icon: Wrench,
     },
     {
       id: 'surplus' as const,

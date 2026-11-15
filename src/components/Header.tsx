@@ -1,14 +1,16 @@
-import React, { useMemo } from 'react';
-import { Menu } from 'lucide-react';
-import { InventoryItem } from '../types';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { Menu, ChevronDown, LogOut, User, Building, Mail, Shield } from 'lucide-react';
+import { InventoryItem, UserInfo } from '../types';
 
 interface HeaderProps {
-  activeModule: 'inventory' | 'surplus' | 'users' | 'permissions';
+  activeModule: 'inventory' | 'dcdn' | 'surplus' | 'users' | 'permissions';
   setIsMobileOpen: (open: boolean) => void;
   setIsCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
-  inventoryItems?: InventoryItem[];
+  inventoryItems?: { bookQty: number; actualQty: number | null; notFound?: boolean; proposal?: string }[];
   onStatClick?: (filter: 'all' | 'audited' | 'pending' | 'discrepancy' | 'needed') => void;
   activeStatFilter?: string;
+  currentUser?: UserInfo | null;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,11 +20,33 @@ export const Header: React.FC<HeaderProps> = ({
   inventoryItems = [],
   onStatClick,
   activeStatFilter = 'all',
+  currentUser,
+  onLogout,
 }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
   const getModuleTitle = () => {
     switch (activeModule) {
       case 'inventory':
         return 'Kiểm kê VTTB';
+      case 'dcdn':
+        return 'Kiểm kê DCĐN';
       case 'surplus':
         return 'Hàng dư';
       case 'users':
@@ -49,6 +73,12 @@ export const Header: React.FC<HeaderProps> = ({
     return { total: inventoryItems.length, audited, pending, discrepancy, needed };
   }, [inventoryItems]);
   const { total, audited, pending, discrepancy, needed } = stats;
+
+  const displayName = currentUser?.name || 'Người dùng';
+  const displayRole = currentUser?.role || 'Chuyên viên Kiểm kê';
+  const avatarUrl =
+    currentUser?.avatar ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0284c7&color=fff`;
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 lg:px-6 h-16 flex items-center justify-between shadow-2xs gap-3">
@@ -79,68 +109,153 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Center: Compact Stat Cards centered in Navbar */}
-      {activeModule === 'inventory' && onStatClick && (
-        <>
-          <div className="hidden lg:flex flex-1 items-center justify-center gap-2 min-w-0">
-            <button
-              onClick={() => onStatClick('all')}
-              className={`flex items-center justify-center px-3.5 py-1.5 rounded-xl font-semibold border transition-all min-w-[105px] text-[14px] ${
-                activeStatFilter === 'all'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                  : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <span>Tổng: {total}</span>
-            </button>
+      {/* Center: Compact Stat Cards centered in Navbar (Desktop) */}
+      {(activeModule === 'inventory' || activeModule === 'dcdn') && onStatClick && (
+        <div className="hidden lg:flex flex-1 items-center justify-center gap-2 min-w-0">
+          <button
+            onClick={() => onStatClick('all')}
+            className={`flex items-center justify-center px-3.5 py-1.5 rounded-xl font-semibold border transition-all min-w-[105px] text-[14px] cursor-pointer ${
+              activeStatFilter === 'all'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            <span>Tổng: {total}</span>
+          </button>
 
-            <button
-              onClick={() => onStatClick('audited')}
-              className={`flex items-center justify-center px-3.5 py-1.5 rounded-xl font-semibold border transition-all min-w-[120px] text-[14px] ${
-                activeStatFilter === 'audited'
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-              }`}
-            >
-              <span>Đã kiểm: {audited}</span>
-            </button>
+          <button
+            onClick={() => onStatClick('audited')}
+            className={`flex items-center justify-center px-3.5 py-1.5 rounded-xl font-semibold border transition-all min-w-[120px] text-[14px] cursor-pointer ${
+              activeStatFilter === 'audited'
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+            }`}
+          >
+            <span>Đã kiểm: {audited}</span>
+          </button>
 
-            <button
-              onClick={() => onStatClick('pending')}
-              className={`flex items-center justify-center px-3.5 py-1.5 rounded-xl font-semibold border transition-all min-w-[125px] text-[14px] ${
-                activeStatFilter === 'pending'
-                  ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
-                  : 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200'
-              }`}
-            >
-              <span>Chưa kiểm: {pending}</span>
-            </button>
+          <button
+            onClick={() => onStatClick('pending')}
+            className={`flex items-center justify-center px-3.5 py-1.5 rounded-xl font-semibold border transition-all min-w-[125px] text-[14px] cursor-pointer ${
+              activeStatFilter === 'pending'
+                ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
+                : 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200'
+            }`}
+          >
+            <span>Chưa kiểm: {pending}</span>
+          </button>
 
-            <button
-              onClick={() => onStatClick('discrepancy')}
-              className={`flex items-center justify-center px-3.5 py-1.5 rounded-xl font-semibold border transition-all min-w-[150px] text-[14px] ${
-                activeStatFilter === 'discrepancy'
-                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                  : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
-              }`}
-            >
-              <span>Đề xuất xử lý: {discrepancy}</span>
-            </button>
+          <button
+            onClick={() => onStatClick('discrepancy')}
+            className={`flex items-center justify-center px-3.5 py-1.5 rounded-xl font-semibold border transition-all min-w-[150px] text-[14px] cursor-pointer ${
+              activeStatFilter === 'discrepancy'
+                ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            <span>Đề xuất xử lý: {discrepancy}</span>
+          </button>
 
-            <button
-              onClick={() => onStatClick('needed')}
-              className={`flex items-center justify-center px-3.5 py-1.5 rounded-xl font-semibold border transition-all min-w-[120px] text-[14px] ${
-                activeStatFilter === 'needed'
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                  : 'bg-indigo-50 text-indigo-900 border-indigo-200 hover:bg-indigo-100'
-              }`}
-            >
-              <span>Cần tìm: {needed}</span>
-            </button>
-          </div>
-          <div className="hidden 2xl:block w-44 shrink-0" aria-hidden="true" />
-        </>
+          <button
+            onClick={() => onStatClick('needed')}
+            className={`flex items-center justify-center px-3.5 py-1.5 rounded-xl font-semibold border transition-all min-w-[120px] text-[14px] cursor-pointer ${
+              activeStatFilter === 'needed'
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                : 'bg-indigo-50 text-indigo-900 border-indigo-200 hover:bg-indigo-100'
+            }`}
+          >
+            <span>Cần tìm: {needed}</span>
+          </button>
+        </div>
       )}
+
+      {/* Right: User Profile (Họ và tên dòng trên, Vai trò dòng dưới) */}
+      <div className="relative shrink-0" ref={dropdownRef}>
+        <button
+          onClick={() => setIsDropdownOpen((prev) => !prev)}
+          className="flex items-center gap-2.5 p-1 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200 focus:outline-hidden cursor-pointer group"
+          title="Thông tin tài khoản"
+        >
+          {/* Avatar with active green dot */}
+          <div className="relative shrink-0">
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              className="w-9 h-9 sm:w-9.5 sm:h-9.5 rounded-full object-cover border-2 border-white shadow-xs group-hover:scale-105 transition-transform"
+            />
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
+          </div>
+
+          {/* User Name & Role text block */}
+          <div className="hidden sm:flex flex-col text-left max-w-[180px] min-w-[110px]">
+            <span className="text-[13px] font-bold text-slate-800 truncate leading-tight group-hover:text-blue-600 transition-colors">
+              {displayName}
+            </span>
+            <span className="text-[11px] font-medium text-slate-500 truncate leading-tight mt-0.5">
+              {displayRole}
+            </span>
+          </div>
+
+          <ChevronDown
+            className={`w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${
+              isDropdownOpen ? 'rotate-180 text-blue-600' : ''
+            }`}
+          />
+        </button>
+
+        {/* Dropdown Menu */}
+        {isDropdownOpen && (
+          <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-fade-in divide-y divide-slate-100">
+            {/* Header info */}
+            <div className="px-3 py-2.5 mb-1">
+              <div className="flex items-center gap-3">
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="w-11 h-11 rounded-full object-cover border border-slate-200 shadow-2xs"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm text-slate-800 truncate">
+                    {displayName}
+                  </div>
+                  <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md mt-0.5">
+                    <Shield className="w-3 h-3" />
+                    <span>{displayRole}</span>
+                  </div>
+                </div>
+              </div>
+
+              {currentUser?.email && (
+                <div className="mt-2.5 pt-2 border-t border-slate-100 text-xs text-slate-600 flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span className="truncate">{currentUser.email}</span>
+                </div>
+              )}
+
+              {currentUser?.department && (
+                <div className="mt-1 text-xs text-slate-600 flex items-center gap-2">
+                  <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span className="truncate">{currentUser.department}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Logout button */}
+            <div className="pt-1">
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  if (onLogout) onLogout();
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-red-500" />
+                <span>Đăng xuất khỏi hệ thống</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </header>
   );
 };
