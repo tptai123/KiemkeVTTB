@@ -51,6 +51,15 @@ import {
   bulkCreateDCDNItemsInSupabase,
   uploadDCDNImageToSupabase,
 } from './services/dcdnService';
+import {
+  fetchSurplusItemsFromSupabase,
+  createSurplusItemInSupabase,
+  updateSurplusItemInSupabase,
+  deleteSurplusItemInSupabase,
+  uploadSurplusImageToSupabase,
+  mapRowToSurplusItem,
+  SurplusRow,
+} from './services/surplusService';
 import { supabase } from './lib/supabase';
 
 export default function App() {
@@ -307,6 +316,68 @@ export default function App() {
     };
   }, [isDCDNConnected]);
 
+  // Surplus connection state
+  const [isSurplusConnected, setIsSurplusConnected] = useState(false);
+
+  // Load Surplus data from Supabase on mount
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let isMounted = true;
+    fetchSurplusItemsFromSupabase()
+      .then((data) => {
+        if (!isMounted) return;
+        if (data && data.length > 0) {
+          setSurplusItems(data);
+          setIsSurplusConnected(true);
+        } else {
+          setIsSurplusConnected(true);
+        }
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.warn('Chưa kết nối bảng hang_du Supabase, sử dụng dữ liệu mẫu:', err);
+        setIsSurplusConnected(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Supabase Realtime — subscribe to hang_du changes
+  useEffect(() => {
+    const client = supabase;
+    if (!isSurplusConnected || !client) return;
+
+    const channel = client
+      .channel('hang_du_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hang_du' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newItem = mapRowToSurplusItem(payload.new as SurplusRow);
+            setSurplusItems((prev) => {
+              if (prev.some((i) => i.id === newItem.id)) return prev;
+              return [newItem, ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = mapRowToSurplusItem(payload.new as SurplusRow);
+            setSurplusItems((prev) =>
+              prev.map((i) => (i.id === updated.id ? updated : i))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as { id: string }).id;
+            setSurplusItems((prev) => prev.filter((i) => i.id !== deletedId));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, [isSurplusConnected]);
+
   // Realtime subscription for current user profile changes in Supabase
   useEffect(() => {
     const client = supabase;
@@ -353,6 +424,7 @@ export default function App() {
         fetchDCDNItems(),
         fetchRolePermissionsFromSupabase(),
         getSavedSessionUser(),
+        fetchSurplusItemsFromSupabase(),
       ]);
 
       if (results[0].status === 'fulfilled') {
@@ -368,6 +440,10 @@ export default function App() {
       }
       if (results[3].status === 'fulfilled' && results[3].value) {
         setCurrentUser(results[3].value);
+      }
+      if (results[4].status === 'fulfilled') {
+        setSurplusItems(results[4].value);
+        setIsSurplusConnected(true);
       }
 
       showToast('Đồng bộ dữ liệu Supabase mới nhất thành công!', 'success');
@@ -596,11 +672,13 @@ export default function App() {
       ? editingSurItem.code
       : itemData.code || `SD-${Date.now()}`;
 
-    if (isSupabaseConnected && imageFile) {
-      try {
-        resolvedImage = await uploadInventoryImageToSupabase(imageFile, itemCodeForFile);
-      } catch (err) {
-        console.warn('Storage upload error for surplus image:', err);
+    if (imageFile) {
+      if (isSurplusConnected || isSupabaseConnected) {
+        try {
+          resolvedImage = await uploadSurplusImageToSupabase(imageFile, itemCodeForFile);
+        } catch (err) {
+          console.warn('Storage upload error for surplus image:', err);
+        }
       }
     }
 
@@ -609,39 +687,96 @@ export default function App() {
       image: resolvedImage,
     };
 
-    if (editingSurItem) {
-      setSurplusItems((prev) =>
-        prev.map((item) =>
-          item.id === editingSurItem.id
-            ? ({ ...item, ...payloadToSave } as SurplusItem)
-            : item
-        )
-      );
-      showToast(`Đã cập nhật thông tin vật tư ${itemData.name || itemData.code}`);
+    if (isSurplusConnected) {
+      try {
+        if (editingSurItem) {
+          const updated = await updateSurplusItemInSupabase(editingSurItem.id, payloadToSave);
+          setSurplusItems((prev) =>
+            prev.map((item) => (item.id === editingSurItem.id ? updated : item))
+          );
+          showToast(`Đã cập nhật thông tin vật tư ${itemData.name || itemData.code}`);
+        } else {
+          const created = await createSurplusItemInSupabase(payloadToSave);
+          setSurplusItems((prev) => [created, ...prev]);
+          showToast(`Đã thêm mới vật tư ${created.name || created.code} thành công`);
+        }
+      } catch (err) {
+        console.error('Lỗi lưu vật tư hàng dư vào Supabase:', err);
+        showToast('Lỗi khi lưu vào Supabase, đang lưu tạm cục bộ', 'error');
+        // Fallback local update
+        if (editingSurItem) {
+          setSurplusItems((prev) =>
+            prev.map((item) =>
+              item.id === editingSurItem.id
+                ? ({ ...item, ...payloadToSave } as SurplusItem)
+                : item
+            )
+          );
+        } else {
+          const newItem: SurplusItem = {
+            id: `sur-${Date.now()}`,
+            code: itemData.code || `SD-${Date.now().toString().slice(-6)}`,
+            name: itemData.name || 'Hàng dư mới',
+            group: itemData.group || 'Hàng dư',
+            model: itemData.model || '',
+            unit: itemData.unit || 'Cái',
+            quantity: itemData.quantity || 1,
+            condition: itemData.condition || 'Mới 100%',
+            location: itemData.location || '',
+            reason: itemData.reason || '',
+            notes: itemData.notes || '',
+            image: resolvedImage,
+            createdAt: new Date().toISOString(),
+          };
+          setSurplusItems((prev) => [newItem, ...prev]);
+        }
+      }
     } else {
-      const newItem: SurplusItem = {
-        id: `sur-${Date.now()}`,
-        code: itemData.code || `SD-${Date.now().toString().slice(-6)}`,
-        name: itemData.name || 'Hàng dư mới',
-        group: itemData.group || 'Hàng dư',
-        model: itemData.model || '',
-        unit: itemData.unit || 'Cái',
-        quantity: itemData.quantity || 1,
-        condition: itemData.condition || 'Mới 100%',
-        location: itemData.location || '',
-        reason: itemData.reason || '',
-        notes: itemData.notes || '',
-        image: resolvedImage,
-        createdAt: new Date().toISOString(),
-      };
-      setSurplusItems((prev) => [newItem, ...prev]);
-      showToast(`Đã thêm mới vật tư ${newItem.name || newItem.code} thành công`);
+      if (editingSurItem) {
+        setSurplusItems((prev) =>
+          prev.map((item) =>
+            item.id === editingSurItem.id
+              ? ({ ...item, ...payloadToSave } as SurplusItem)
+              : item
+          )
+        );
+        showToast(`Đã cập nhật thông tin vật tư ${itemData.name || itemData.code}`);
+      } else {
+        const newItem: SurplusItem = {
+          id: `sur-${Date.now()}`,
+          code: itemData.code || `SD-${Date.now().toString().slice(-6)}`,
+          name: itemData.name || 'Hàng dư mới',
+          group: itemData.group || 'Hàng dư',
+          model: itemData.model || '',
+          unit: itemData.unit || 'Cái',
+          quantity: itemData.quantity || 1,
+          condition: itemData.condition || 'Mới 100%',
+          location: itemData.location || '',
+          reason: itemData.reason || '',
+          notes: itemData.notes || '',
+          image: resolvedImage,
+          createdAt: new Date().toISOString(),
+        };
+        setSurplusItems((prev) => [newItem, ...prev]);
+        showToast(`Đã thêm mới vật tư ${newItem.name || newItem.code} thành công`);
+      }
     }
     setEditingSurItem(null);
   };
 
-  const handleDeleteSurplus = (id: string) => {
+  const handleDeleteSurplus = async (id: string) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa bản ghi hàng dư này?')) {
+      if (isSurplusConnected) {
+        try {
+          await deleteSurplusItemInSupabase(id);
+          setSurplusItems((prev) => prev.filter((item) => item.id !== id));
+          showToast('Đã xóa hàng dư trên Supabase thành công', 'info');
+          return;
+        } catch (err) {
+          console.error('Lỗi khi xóa hàng dư trên Supabase:', err);
+          showToast('Lỗi khi xóa trên Supabase', 'error');
+        }
+      }
       setSurplusItems((prev) => prev.filter((item) => item.id !== id));
       showToast('Đã xóa hàng dư thành công', 'info');
     }

@@ -5,7 +5,7 @@ interface ImageZoomModalProps {
   isOpen: boolean;
   onClose: () => void;
   imageUrl: string;
-  itemCode: string;
+  itemCode?: string;
   itemName: string;
 }
 
@@ -13,7 +13,6 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({
   isOpen,
   onClose,
   imageUrl,
-  itemCode,
   itemName,
 }) => {
   const [scale, setScale] = useState(1);
@@ -77,19 +76,13 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({
     /* Không làm mờ và không làm tối giao diện phía sau; chỉ đóng khi click dấu X */
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-transparent">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-3xl overflow-hidden flex flex-col">
-        {/* Header với 2 trường Mã vật tư & Tên vật tư nằm ngang hàng nhau + nút X */}
-        <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-xs font-semibold text-slate-500">Mã vật tư:</span>
-              <span className="text-sm font-mono font-bold text-blue-700">{itemCode}</span>
-            </div>
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <span className="text-xs font-semibold text-slate-500 shrink-0">Tên vật tư:</span>
-              <span className="text-sm font-bold text-slate-900 truncate" title={itemName}>
-                {itemName}
-              </span>
-            </div>
+        {/* Header: Chỉ để Tên vật tư + nút X */}
+        <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="text-xs font-semibold text-slate-500 shrink-0">Tên vật tư:</span>
+            <span className="text-sm font-bold text-slate-900 truncate" title={itemName}>
+              {itemName}
+            </span>
           </div>
 
           <button
@@ -97,7 +90,7 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({
             onClick={onClose}
             aria-label="Đóng cửa sổ"
             title="Đóng"
-            className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

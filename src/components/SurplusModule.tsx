@@ -315,16 +315,16 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
             {/* Tiêu đề bảng: Đều căn giữa (text-center), nền nhẹ, đường kẻ mỏng */}
             <thead className="bg-slate-100/90 sticky top-0 z-10 shadow-2xs">
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-700 divide-x divide-slate-200 border-b border-slate-200">
-                <th className="py-2.5 px-2 text-center w-14 shrink-0">STT</th>
-                <th className="py-2.5 px-2 text-center w-20 shrink-0">Hình ảnh</th>
-                <th className="py-2.5 px-4 text-center min-w-[220px]">Tên vật tư</th>
-                <th className="py-2.5 px-3 text-center w-20 shrink-0">ĐVT</th>
-                <th className="py-2.5 px-3 text-center w-24 shrink-0">Số lượng</th>
-                <th className="py-2.5 px-3 text-center w-36 shrink-0">Vị trí</th>
-                <th className="py-2.5 px-3 text-center w-32 shrink-0">Tình trạng</th>
-                <th className="py-2.5 px-3 text-center w-40 shrink-0">Quy cách</th>
+                <th className="py-2.5 px-2 text-center w-12 shrink-0">STT</th>
+                <th className="py-2.5 px-2 text-center w-16 shrink-0">Hình ảnh</th>
+                <th className="py-2.5 px-3 text-center w-[240px]">Tên vật tư</th>
+                <th className="py-2.5 px-2 text-center w-16 shrink-0">ĐVT</th>
+                <th className="py-2.5 px-2 text-center w-20 shrink-0">Số lượng</th>
+                <th className="py-2.5 px-2 text-center w-32 shrink-0">Vị trí</th>
+                <th className="py-2.5 px-3 text-center w-48 shrink-0">Tình trạng</th>
+                <th className="py-2.5 px-3 text-center w-64 shrink-0">Quy cách</th>
                 <th className="py-2.5 px-3 text-center min-w-[140px]">Ghi chú</th>
-                <th className="py-2.5 px-3 text-center w-20 shrink-0">Thao tác</th>
+                <th className="py-2.5 px-2 text-center w-16 shrink-0">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
@@ -382,35 +382,35 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
                         </div>
                       </td>
 
-                      {/* 3. Tên vật tư (Đã bỏ nhóm ở dưới tên vật tư) */}
-                      <td className="py-2.5 px-4 font-semibold text-slate-900 group-hover:text-blue-700 transition-colors leading-snug">
+                      {/* 3. Tên vật tư (Đã giảm chiều rộng lại một chút) */}
+                      <td className="py-2.5 px-3 font-semibold text-slate-900 group-hover:text-blue-700 transition-colors leading-snug break-words">
                         {item.name}
                       </td>
 
                       {/* 4. ĐVT */}
-                      <td className="py-2.5 px-3 text-center text-slate-700 font-medium">
+                      <td className="py-2.5 px-2 text-center text-slate-700 font-medium">
                         {item.unit}
                       </td>
 
                       {/* 5. Số lượng */}
-                      <td className="py-2.5 px-3 text-center font-bold text-slate-900">
+                      <td className="py-2.5 px-2 text-center font-bold text-slate-900">
                         {item.quantity}
                       </td>
 
                       {/* 6. Vị trí */}
-                      <td className="py-2.5 px-3 text-center text-slate-700 text-xs">
+                      <td className="py-2.5 px-2 text-center text-slate-700 text-xs">
                         {item.location || '—'}
                       </td>
 
-                      {/* 7. Tình trạng */}
+                      {/* 7. Tình trạng (Đã tăng chiều rộng) */}
                       <td className="py-2.5 px-3 text-center">
-                        <span className="inline-flex px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           {item.condition || '—'}
                         </span>
                       </td>
 
-                      {/* 8. Quy cách */}
-                      <td className="py-2.5 px-3 text-center text-slate-600 text-xs">
+                      {/* 8. Quy cách (Đã tăng chiều rộng) */}
+                      <td className="py-2.5 px-3 text-center text-slate-600 text-xs break-words">
                         {item.model || '—'}
                       </td>
 
