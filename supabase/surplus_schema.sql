@@ -84,7 +84,21 @@ BEGIN
   END IF;
 END $$;
 
--- 6. Khởi tạo một số dữ liệu mẫu ban đầu (Nếu chưa có)
+-- 6. Cấu hình Storage Bucket cho hình ảnh hàng dư
+-- Tùy chọn A: Tạo bucket riêng "File hang du" (Public)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('File hang du', 'File hang du', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Cho phép upload và xem ảnh trong bucket "File hang du"
+DROP POLICY IF EXISTS "Public Access File hang du" ON storage.objects;
+CREATE POLICY "Public Access File hang du"
+ON storage.objects FOR ALL
+TO anon, authenticated
+USING (bucket_id = 'File hang du')
+WITH CHECK (bucket_id = 'File hang du');
+
+-- 7. Khởi tạo một số dữ liệu mẫu ban đầu (Nếu chưa có)
 INSERT INTO public.hang_du (ten_vat_tu, dvt, so_luong, vi_tri, tinh_trang, quy_cach, ghi_chu, hinh_anh)
 VALUES
   ('Switch Cisco 24 Port Gigabit Catalyst Enterprise', 'Cái', 3, 'Kho A - Tầng 1 (Kệ IT)', 'Mới 100%', 'Catalyst C1000-24T-4G-L', 'Nguyên đai nguyên kiện, chưa qua sử dụng', 'https://izangkbanoxeivphmwyc.supabase.co/storage/v1/object/public/File%20all/cisco.svg'),

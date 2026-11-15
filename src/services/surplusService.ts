@@ -133,8 +133,12 @@ export async function deleteSurplusItemInSupabase(id: string): Promise<void> {
   }
 }
 
+export const SURPLUS_STORAGE_BUCKET = 'File hang du';
+export const FALLBACK_SURPLUS_BUCKET = 'File all';
+
 /**
- * Tải hình ảnh vật tư hàng dư lên bucket "File all"
+ * Tải hình ảnh vật tư hàng dư lên Storage Bucket trong Supabase
+ * Ưu tiên bucket chuyên biệt "File hang du", tự động fallback sang "File all/hang_du/" nếu chưa tạo bucket riêng
  */
 export async function uploadSurplusImageToSupabase(
   file: File,
@@ -145,21 +149,46 @@ export async function uploadSurplusImageToSupabase(
 
   const fileExt = file.name.split('.').pop() || 'jpg';
   const cleanPrefix = prefix.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const filePath = `hang_du/${cleanPrefix}_${Date.now()}.${fileExt}`;
+  const fileName = `${cleanPrefix}_${Date.now()}.${fileExt}`;
 
-  const { error: uploadError } = await client.storage
-    .from('File all')
-    .upload(filePath, file, {
+  // 1. Thử tải lên bucket chuyên biệt "File hang du"
+  let targetBucket = SURPLUS_STORAGE_BUCKET;
+  let targetPath = fileName;
+
+  let { error: uploadError } = await client.storage
+    .from(targetBucket)
+    .upload(targetPath, file, {
       cacheControl: '3600',
       upsert: true,
       contentType: file.type || 'image/jpeg',
     });
 
+  // 2. Nếu bucket chưa tồn tại (error not found), tự động fallback sang bucket có sẵn "File all"
+  if (
+    uploadError &&
+    (uploadError.message?.toLowerCase().includes('not found') ||
+      (uploadError as any).statusCode === 404 ||
+      (uploadError as any).statusCode === '404')
+  ) {
+    targetBucket = FALLBACK_SURPLUS_BUCKET;
+    targetPath = `hang_du/${fileName}`;
+
+    const fallbackRes = await client.storage
+      .from(targetBucket)
+      .upload(targetPath, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type || 'image/jpeg',
+      });
+
+    uploadError = fallbackRes.error;
+  }
+
   if (uploadError) {
-    console.error('Lỗi tải ảnh hàng dư lên Storage bucket File all:', uploadError);
+    console.error(`Lỗi tải ảnh hàng dư lên Storage bucket (${targetBucket}):`, uploadError);
     throw uploadError;
   }
 
-  const { data } = client.storage.from('File all').getPublicUrl(filePath);
+  const { data } = client.storage.from(targetBucket).getPublicUrl(targetPath);
   return data.publicUrl;
 }

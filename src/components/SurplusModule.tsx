@@ -311,19 +311,19 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
       {/* BẢNG DỮ LIỆU DESKTOP (Có đường kẻ mỏng, tiêu đề căn giữa) */}
       <div className="hidden md:flex bg-white rounded-xl shadow-2xs border border-slate-200 flex-1 min-h-0 flex-col overflow-hidden text-[13px] sm:text-[14px]">
         <div className="overflow-x-auto overflow-y-auto flex-1 no-scrollbar">
-          <table className="w-full text-left border-collapse border border-slate-200">
+          <table className="w-full min-w-[1450px] text-left border-collapse border border-slate-200">
             {/* Tiêu đề bảng: Đều căn giữa (text-center), nền nhẹ, đường kẻ mỏng */}
             <thead className="bg-slate-100/90 sticky top-0 z-10 shadow-2xs">
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-700 divide-x divide-slate-200 border-b border-slate-200">
                 <th className="py-2.5 px-2 text-center w-12 shrink-0">STT</th>
                 <th className="py-2.5 px-2 text-center w-16 shrink-0">Hình ảnh</th>
-                <th className="py-2.5 px-3 text-center w-[240px]">Tên vật tư</th>
+                <th className="py-2.5 px-3 text-center min-w-[240px]">Tên vật tư</th>
                 <th className="py-2.5 px-2 text-center w-16 shrink-0">ĐVT</th>
                 <th className="py-2.5 px-2 text-center w-20 shrink-0">Số lượng</th>
                 <th className="py-2.5 px-2 text-center w-32 shrink-0">Vị trí</th>
-                <th className="py-2.5 px-3 text-center w-48 shrink-0">Tình trạng</th>
-                <th className="py-2.5 px-3 text-center w-64 shrink-0">Quy cách</th>
-                <th className="py-2.5 px-3 text-center min-w-[140px]">Ghi chú</th>
+                <th className="py-2.5 px-3 text-center w-[220px] shrink-0">Tình trạng</th>
+                <th className="py-2.5 px-3 text-center w-[300px] shrink-0">Quy cách</th>
+                <th className="py-2.5 px-3 text-center w-[300px] shrink-0">Ghi chú</th>
                 <th className="py-2.5 px-2 text-center w-16 shrink-0">Thao tác</th>
               </tr>
             </thead>
@@ -382,7 +382,7 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
                         </div>
                       </td>
 
-                      {/* 3. Tên vật tư (Đã giảm chiều rộng lại một chút) */}
+                      {/* 3. Tên vật tư (Tự động mở rộng nhận toàn bộ chiều rộng còn lại của bảng) */}
                       <td className="py-2.5 px-3 font-semibold text-slate-900 group-hover:text-blue-700 transition-colors leading-snug break-words">
                         {item.name}
                       </td>
@@ -402,21 +402,21 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
                         {item.location || '—'}
                       </td>
 
-                      {/* 7. Tình trạng (Đã tăng chiều rộng) */}
+                      {/* 7. Tình trạng (220px) */}
                       <td className="py-2.5 px-3 text-center">
-                        <span className="inline-flex px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 max-w-[200px] truncate" title={item.condition}>
                           {item.condition || '—'}
                         </span>
                       </td>
 
-                      {/* 8. Quy cách (Đã tăng chiều rộng) */}
+                      {/* 8. Quy cách (300px) */}
                       <td className="py-2.5 px-3 text-center text-slate-600 text-xs break-words">
                         {item.model || '—'}
                       </td>
 
-                      {/* 9. Ghi chú */}
+                      {/* 9. Ghi chú (300px, bằng quy cách) */}
                       <td
-                        className="py-2.5 px-3 text-center text-slate-500 text-xs max-w-[180px] truncate"
+                        className="py-2.5 px-3 text-center text-slate-500 text-xs break-words"
                         title={item.notes || item.reason || ''}
                       >
                         {item.notes || item.reason || '—'}
