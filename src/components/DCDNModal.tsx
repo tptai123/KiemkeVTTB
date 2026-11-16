@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Trash2,
   Lock,
+  AlertTriangle,
 } from 'lucide-react';
 import { DCDNItem, CollaboratorPresence } from '../types';
 import { WAREHOUSE_LOCATIONS } from '../mockData';
@@ -17,10 +18,12 @@ interface DCDNModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (item: Partial<DCDNItem>, imageFile?: File | null) => Promise<void> | void;
+  onDelete?: (id: string) => Promise<void> | void;
   editingItem?: DCDNItem | null;
   availableProposals?: string[];
   currentUserName: string;
   isReadOnly?: boolean;
+  canDelete?: boolean;
   collaborators?: CollaboratorPresence[];
 }
 
@@ -139,10 +142,12 @@ export const DCDNModal: React.FC<DCDNModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  onDelete,
   editingItem,
   availableProposals = [],
   currentUserName,
   isReadOnly = false,
+  canDelete = false,
   collaborators = [],
 }) => {
   const otherEditors = collaborators.filter(
@@ -175,6 +180,8 @@ export const DCDNModal: React.FC<DCDNModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const proposalMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -237,6 +244,8 @@ export const DCDNModal: React.FC<DCDNModalProps> = ({
     setSelectedImageFile(null);
     setIsSubmitting(false);
     setHasSubmitted(false);
+    setIsConfirmDeleteOpen(false);
+    setIsDeleting(false);
     setError('');
   }, [editingItem, isOpen]);
 
@@ -388,14 +397,27 @@ export const DCDNModal: React.FC<DCDNModalProps> = ({
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-xl text-blue-100 hover:text-white hover:bg-blue-700 transition-colors"
-              aria-label="Đóng"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              {editingItem && canDelete && (
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmDeleteOpen(true)}
+                  className="p-1.5 rounded-xl text-red-100 hover:text-white bg-red-500/25 hover:bg-red-600 transition-colors cursor-pointer"
+                  title="Xóa dụng cụ này"
+                  aria-label="Xóa dụng cụ"
+                >
+                  <Trash2 className="w-5 h-5 text-red-200 hover:text-white" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 rounded-xl text-blue-100 hover:text-white hover:bg-blue-700 transition-colors"
+                aria-label="Đóng"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {otherEditors.length > 0 && (
@@ -800,6 +822,90 @@ export const DCDNModal: React.FC<DCDNModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Modal Xác nhận xóa dụng cụ DCĐN */}
+      {isConfirmDeleteOpen && editingItem && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in text-slate-800">
+          <div
+            className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 space-y-4 animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-900">
+                  Xác nhận xóa dụng cụ DCĐN
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Bạn có chắc chắn muốn xóa dụng cụ này khỏi hệ thống kiểm kê?
+                </p>
+              </div>
+            </div>
+
+            {/* Chi tiết dụng cụ bị xóa */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-500">Mã dụng cụ:</span>
+                <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                  {editingItem.code}
+                </span>
+              </div>
+              <div className="font-semibold text-slate-900 line-clamp-2">
+                {editingItem.name}
+              </div>
+              <div className="flex items-center gap-3 text-slate-600 flex-wrap">
+                <span>
+                  Kho: <span className="font-medium">{editingItem.warehouse || '—'}</span>
+                </span>
+                <span>•</span>
+                <span>
+                  Vị trí: <span className="font-medium">{editingItem.location || '—'}</span>
+                </span>
+                <span>•</span>
+                <span>
+                  SL tồn: <strong className="text-slate-800">{editingItem.bookQty} {editingItem.unit}</strong>
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-red-600 font-medium">
+              * Hành động này sẽ xóa dữ liệu vĩnh viễn khỏi hệ thống và không thể hoàn tác.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setIsConfirmDeleteOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs sm:text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  if (onDelete && editingItem) {
+                    setIsDeleting(true);
+                    try {
+                      await onDelete(editingItem.id);
+                      setIsConfirmDeleteOpen(false);
+                      onClose();
+                    } finally {
+                      setIsDeleting(false);
+                    }
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 shadow-md shadow-red-500/20 cursor-pointer disabled:opacity-50"
+              >
+                {isDeleting ? 'Đang xóa...' : 'Xác nhận xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

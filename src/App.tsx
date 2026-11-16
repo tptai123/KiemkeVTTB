@@ -43,6 +43,7 @@ import {
   updateInventoryItemInSupabase,
   createInventoryItemInSupabase,
   bulkCreateInventoryItemsInSupabase,
+  deleteInventoryItemInSupabase,
   uploadInventoryImageToSupabase,
   mapRowToInventoryItem,
 } from './services/inventoryService';
@@ -51,6 +52,7 @@ import {
   updateDCDNItemInSupabase,
   createDCDNItemInSupabase,
   bulkCreateDCDNItemsInSupabase,
+  deleteDCDNItemInSupabase,
   uploadDCDNImageToSupabase,
   mapRowToDCDNItem,
 } from './services/dcdnService';
@@ -903,6 +905,40 @@ export default function App() {
     setEditingSurItem(null);
   };
 
+  const handleDeleteInventory = async (id: string) => {
+    if (isSupabaseConnected) {
+      try {
+        await deleteInventoryItemInSupabase(id);
+        setInventoryItems((prev) => prev.filter((item) => item.id !== id));
+        showToast('Đã xóa vật tư kiểm kê thành công', 'info');
+        return;
+      } catch (err) {
+        console.error('Lỗi khi xóa vật tư trên Supabase:', err);
+        showToast('Lỗi khi xóa vật tư trên Supabase', 'error');
+        return;
+      }
+    }
+    setInventoryItems((prev) => prev.filter((item) => item.id !== id));
+    showToast('Đã xóa vật tư kiểm kê thành công', 'info');
+  };
+
+  const handleDeleteDCDN = async (id: string) => {
+    if (isDCDNConnected) {
+      try {
+        await deleteDCDNItemInSupabase(id);
+        setDcdnItems((prev) => prev.filter((item) => item.id !== id));
+        showToast('Đã xóa dụng cụ DCĐN thành công', 'info');
+        return;
+      } catch (err) {
+        console.error('Lỗi khi xóa dụng cụ trên Supabase:', err);
+        showToast('Lỗi khi xóa dụng cụ trên Supabase', 'error');
+        return;
+      }
+    }
+    setDcdnItems((prev) => prev.filter((item) => item.id !== id));
+    showToast('Đã xóa dụng cụ DCĐN thành công', 'info');
+  };
+
   const handleDeleteSurplus = async (id: string) => {
     if (isSurplusConnected) {
       try {
@@ -1260,10 +1296,12 @@ export default function App() {
           isOpen={isInvModalOpen}
           onClose={() => setIsInvModalOpen(false)}
           onSave={handleSaveInventory}
+          onDelete={handleDeleteInventory}
           editingItem={editingInvItem}
           availableProposals={availableProposals}
           currentUserName={currentUser?.name || INITIAL_USER.name}
           isReadOnly={!currentUserPermissions.canAuditInventory}
+          canDelete={currentUserPermissions.canManageInventoryItems}
           collaborators={collaborators}
         />
       )}
@@ -1273,10 +1311,12 @@ export default function App() {
           isOpen={isDCDNModalOpen}
           onClose={() => setIsDCDNModalOpen(false)}
           onSave={handleSaveDCDN}
+          onDelete={handleDeleteDCDN}
           editingItem={editingDCDNItem}
           availableProposals={availableDCDNProposals}
           currentUserName={currentUser?.name || INITIAL_USER.name}
           isReadOnly={!currentUserPermissions.canAuditDCDN}
+          canDelete={currentUserPermissions.canManageDCDNItems}
           collaborators={collaborators}
         />
       )}

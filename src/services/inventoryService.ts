@@ -230,3 +230,12 @@ export const bulkCreateInventoryItemsInSupabase = async (
 
   return createdAll;
 };
+
+export const deleteInventoryItemInSupabase = async (id: string): Promise<void> => {
+  if (!supabase) {
+    throw new Error('Supabase chưa được cấu hình.');
+  }
+
+  const { error } = await supabase.from(TABLE_NAME).delete().eq('id', id);
+  if (error) throw error;
+};
