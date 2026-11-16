@@ -474,13 +474,13 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-700 divide-x divide-slate-200 border-b border-slate-200">
                 <th className="py-2.5 px-2 text-center w-12 shrink-0">STT</th>
                 <th className="py-2.5 px-2 text-center w-16 shrink-0">Hình ảnh</th>
-                <th className="py-2.5 px-3 text-center min-w-[280px]">Tên vật tư</th>
+                <th className="py-2.5 px-3 text-center min-w-[320px]">Tên vật tư</th>
                 <th className="py-2.5 px-2 text-center w-16 shrink-0">ĐVT</th>
                 <th className="py-2.5 px-2 text-center w-20 shrink-0">Số lượng</th>
                 <th className="py-2.5 px-2 text-center w-32 shrink-0">Vị trí</th>
                 <th className="py-2.5 px-3 text-center w-[220px] shrink-0">Tình trạng</th>
-                <th className="py-2.5 px-3 text-center w-[280px] shrink-0">Quy cách</th>
-                <th className="py-2.5 px-3 text-center w-[280px] shrink-0">Ghi chú</th>
+                <th className="py-2.5 px-3 text-center w-[260px] shrink-0">Quy cách</th>
+                <th className="py-2.5 px-3 text-center w-[260px] shrink-0">Ghi chú</th>
                 <th className="py-2.5 px-2 text-center w-16 shrink-0">Thao tác</th>
               </tr>
             </thead>
