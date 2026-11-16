@@ -188,7 +188,7 @@ export const SurplusModal: React.FC<SurplusModalProps> = ({
           if (initialSnapshot) initialObj = JSON.parse(initialSnapshot);
         } catch {}
 
-        payloadToSave = {};
+        payloadToSave = { code: editingItem.code };
         if (formData.name.trim() !== (initialObj.name || '')) {
           payloadToSave.name = formData.name.trim();
         }

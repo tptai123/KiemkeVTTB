@@ -714,7 +714,7 @@ export default function App() {
           setDcdnItems((prev) =>
             prev.map((item) => (item.id === editingDCDNItem.id ? updated : item))
           );
-          showToast(`Đã cập nhật dụng cụ ${itemData.code} lên Supabase`);
+          showToast(`Đã cập nhật dụng cụ ${updated.code || editingDCDNItem.code || itemData.code} lên Supabase`);
         } catch (err) {
           if (err instanceof ConcurrencyConflictError) {
             showToast(err.message, 'error');
@@ -738,7 +738,7 @@ export default function App() {
               : item
           )
         );
-        showToast(`Đã cập nhật thành công dụng cụ ${itemData.code}`);
+        showToast(`Đã cập nhật thành công dụng cụ ${editingDCDNItem.code || itemData.code}`);
       }
     } else {
       if (isDCDNConnected) {
@@ -827,7 +827,8 @@ export default function App() {
           setSurplusItems((prev) =>
             prev.map((item) => (item.id === editingSurItem.id ? updated : item))
           );
-          showToast(`Đã cập nhật thông tin vật tư ${itemData.name || itemData.code}`);
+          const targetName = updated.name || editingSurItem.name || itemData.name || editingSurItem.code || '';
+          showToast(`Đã cập nhật thông tin vật tư ${targetName}`);
         } else {
           const created = await createSurplusItemInSupabase(payloadToSave);
           setSurplusItems((prev) => [created, ...prev]);
@@ -877,7 +878,8 @@ export default function App() {
               : item
           )
         );
-        showToast(`Đã cập nhật thông tin vật tư ${itemData.name || itemData.code}`);
+        const targetName = editingSurItem.name || itemData.name || editingSurItem.code || '';
+        showToast(`Đã cập nhật thông tin vật tư ${targetName}`);
       } else {
         const newItem: SurplusItem = {
           id: `sur-${Date.now()}`,
