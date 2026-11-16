@@ -82,8 +82,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       <div className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/40 p-6 sm:p-8 z-10 animate-fade-in relative mx-auto">
         {/* Header Branding */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-tr from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/30 mb-3">
-            <Boxes className="w-8 h-8" />
+          <div className="inline-flex items-center justify-center mb-3">
+            <img
+              src="https://izangkbanoxeivphmwyc.supabase.co/storage/v1/object/public/File%20all/logo_webapp.png"
+              alt="Logo Kiểm Kê VTTB"
+              className="w-16 h-16 rounded-2xl object-contain drop-shadow-md"
+            />
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
             Quản lý kiểm kê

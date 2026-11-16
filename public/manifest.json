@@ -1,0 +1,31 @@
+{
+  "name": "Kiểm Kê VTTB - Hệ Thống Quản Lý Vật Tư Thiết Bị",
+  "short_name": "Kiểm Kê VTTB",
+  "description": "Ứng dụng kiểm kê vật tư thiết bị và quản lý hàng dư nội bộ doanh nghiệp.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://izangkbanoxeivphmwyc.supabase.co/storage/v1/object/public/File%20all/logo_webapp.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://izangkbanoxeivphmwyc.supabase.co/storage/v1/object/public/File%20all/logo_webapp.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo_webapp.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
