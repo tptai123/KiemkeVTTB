@@ -10,7 +10,7 @@ import {
   Trash2,
   Lock,
 } from 'lucide-react';
-import { InventoryItem } from '../types';
+import { InventoryItem, CollaboratorPresence } from '../types';
 import { WAREHOUSE_LOCATIONS } from '../mockData';
 
 interface InventoryModalProps {
@@ -21,6 +21,7 @@ interface InventoryModalProps {
   availableProposals?: string[];
   currentUserName: string;
   isReadOnly?: boolean;
+  collaborators?: CollaboratorPresence[];
 }
 
 // Convert Vietnamese formatted number (e.g. 1.250,5 or 1250,5) to JavaScript number
@@ -120,7 +121,15 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   availableProposals = [],
   currentUserName,
   isReadOnly = false,
+  collaborators = [],
 }) => {
+  const otherEditors = collaborators.filter(
+    (c) =>
+      editingItem &&
+      c.editingItemId === editingItem.id &&
+      c.userName !== currentUserName &&
+      c.userId !== currentUserName
+  );
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -276,12 +285,53 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSave(
-        {
-          // Không cho phép chỉnh sửa Mã vật tư, ĐVT, SL sổ sách khi chỉnh sửa vật tư
-          code: editingItem ? editingItem.code : formData.code,
-          unit: editingItem ? editingItem.unit : formData.unit,
-          bookQty: editingItem ? editingItem.bookQty : parseVietnameseNumber(formData.bookQtyStr),
+      let payloadToSave: Partial<InventoryItem>;
+      if (editingItem) {
+        let initialObj: Record<string, any> = {};
+        try {
+          if (initialSnapshot) initialObj = JSON.parse(initialSnapshot);
+        } catch {}
+
+        payloadToSave = { code: editingItem.code };
+        if (formData.name.trim() !== (initialObj.name || '')) {
+          payloadToSave.name = formData.name.trim();
+        }
+        if (formData.location.trim() !== (initialObj.location || '')) {
+          payloadToSave.location = formData.location.trim();
+        }
+        if (formData.actualQtyStr !== initialObj.actualQtyStr) {
+          payloadToSave.actualQty = parsedActualQty;
+          if (hasActualQty) {
+            payloadToSave.auditedAt = getTodayDDMMYY();
+            payloadToSave.auditor = currentUserName;
+          }
+        }
+        if (formData.importQtyStr !== initialObj.importQtyStr) {
+          payloadToSave.importQty = parsedImportQty;
+        }
+        if (formData.exportQtyStr !== initialObj.exportQtyStr) {
+          payloadToSave.exportQty = parsedExportQty;
+        }
+        if (trimmedProposal !== (initialObj.proposal || '')) {
+          payloadToSave.proposal = trimmedProposal;
+        }
+        if (formData.proposalReason.trim() !== (initialObj.proposalReason || '')) {
+          payloadToSave.proposalReason = trimmedProposal ? formData.proposalReason.trim() : '';
+        }
+        if (formData.notes !== (initialObj.notes || '')) {
+          payloadToSave.notes = formData.notes;
+        }
+        if (formData.notFound !== Boolean(initialObj.notFound)) {
+          payloadToSave.notFound = formData.notFound;
+        }
+        if (selectedImageFile || formData.image !== (initialObj.image || '')) {
+          payloadToSave.image = formData.image || undefined;
+        }
+      } else {
+        payloadToSave = {
+          code: formData.code,
+          unit: formData.unit,
+          bookQty: parseVietnameseNumber(formData.bookQtyStr),
           name: formData.name.trim(),
           location: formData.location.trim(),
           actualQty: parsedActualQty,
@@ -292,12 +342,12 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
           image: formData.image || undefined,
           notes: formData.notes,
           notFound: formData.notFound,
-          // Tự động lấy ngày kiểm kê DD/MM/YY và tên User kiểm kê khi lưu có SL kiểm kê
           auditedAt: hasActualQty ? getTodayDDMMYY() : undefined,
           auditor: hasActualQty ? currentUserName : undefined,
-        },
-        selectedImageFile
-      );
+        };
+      }
+
+      await onSave(payloadToSave, selectedImageFile);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -336,6 +386,15 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          {otherEditors.length > 0 && (
+            <div className="mt-2.5 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-300/40 text-amber-200 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-300" />
+              <span>
+                <strong>{otherEditors.map((e) => e.userName).join(', ')}</strong> cũng đang mở vật tư này! Cẩn trọng kiểm tra để tránh ghi đè dữ liệu.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Modal Body */}

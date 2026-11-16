@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { InventoryItem } from '../types';
+import { ConcurrencyConflictError } from './errors';
 
 const TABLE_NAME = 'kiem_ke_vttb';
 export const STORAGE_BUCKET = 'File all';
@@ -80,6 +81,7 @@ const mapRowToInventoryItem = (row: InventoryItemRow): InventoryItem => ({
   notes: row.ghi_chu || '',
   auditedAt: row.ngay_kiem_ke || undefined,
   auditor: row.nguoi_kiem_ke || undefined,
+  updatedAt: row.ngay_cap_nhat || undefined,
 });
 export { mapRowToInventoryItem };
 
@@ -112,7 +114,7 @@ const PAGE_SIZE = 1000;
 
 // Selected columns for list view — skips heavy/unused columns on initial load
 const LIST_SELECT_COLUMNS =
-  'id,ma_vat_tu,ten_vat_tu,nhom_vat_tu,model,don_vi_tinh,kho,vi_tri,sl_so_sach,sl_kiem_ke,sl_nhap,sl_xuat,de_xuat,ly_do_xu_ly,ghi_chu,hinh_anh,khong_tim_thay,ngay_kiem_ke,nguoi_kiem_ke';
+  'id,ma_vat_tu,ten_vat_tu,nhom_vat_tu,model,don_vi_tinh,kho,vi_tri,sl_so_sach,sl_kiem_ke,sl_nhap,sl_xuat,de_xuat,ly_do_xu_ly,ghi_chu,hinh_anh,khong_tim_thay,ngay_kiem_ke,nguoi_kiem_ke,ngay_cap_nhat';
 
 export const fetchInventoryItems = async (): Promise<InventoryItem[]> => {
   if (!supabase) {
@@ -151,22 +153,37 @@ export const fetchInventoryItems = async (): Promise<InventoryItem[]> => {
 
 export const updateInventoryItemInSupabase = async (
   id: string,
-  updates: Partial<InventoryItem>
+  updates: Partial<InventoryItem>,
+  expectedUpdatedAt?: string
 ): Promise<InventoryItem> => {
   if (!supabase) {
     throw new Error('Supabase chưa được cấu hình.');
   }
 
   const payload = mapInventoryItemToRowPayload(updates);
-  const { data, error } = await supabase
+  payload.ngay_cap_nhat = new Date().toISOString();
+
+  let query = supabase
     .from(TABLE_NAME)
     .update(payload)
-    .eq('id', id)
-    .select('*')
-    .single();
+    .eq('id', id);
+
+  if (expectedUpdatedAt) {
+    query = query.eq('ngay_cap_nhat', expectedUpdatedAt);
+  }
+
+  const { data, error } = await query.select('*');
 
   if (error) throw error;
-  return mapRowToInventoryItem(data as InventoryItemRow);
+
+  if (!data || data.length === 0) {
+    if (expectedUpdatedAt) {
+      throw new ConcurrencyConflictError();
+    }
+    throw new Error('Không tìm thấy bản ghi để cập nhật.');
+  }
+
+  return mapRowToInventoryItem(data[0] as InventoryItemRow);
 };
 
 export const createInventoryItemInSupabase = async (

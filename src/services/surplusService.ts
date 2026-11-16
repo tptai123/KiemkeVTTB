@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { SurplusItem } from '../types';
+import { ConcurrencyConflictError } from './errors';
 
 export interface SurplusRow {
   id: string;
@@ -30,6 +31,7 @@ export const mapRowToSurplusItem = (row: SurplusRow): SurplusItem => ({
   notes: row.ghi_chu || '',
   image: row.hinh_anh || undefined,
   createdAt: row.ngay_tao || new Date().toISOString(),
+  updatedAt: row.ngay_cap_nhat || undefined,
 });
 
 export const mapSurplusItemToRow = (item: Partial<SurplusItem>): Partial<SurplusRow> => {
@@ -90,29 +92,43 @@ export async function createSurplusItemInSupabase(
 }
 
 /**
- * Cập nhật thông tin vật tư hàng dư trong Supabase
+ * Cập nhật thông tin vật tư hàng dư trong Supabase (có hỗ trợ OCC)
  */
 export async function updateSurplusItemInSupabase(
   id: string,
-  item: Partial<SurplusItem>
+  item: Partial<SurplusItem>,
+  expectedUpdatedAt?: string
 ): Promise<SurplusItem> {
   const client = supabase;
   if (!client) throw new Error('Supabase client chưa được cấu hình');
 
   const row = mapSurplusItemToRow(item);
-  const { data, error } = await client
+  row.ngay_cap_nhat = new Date().toISOString();
+
+  let query = client
     .from('hang_du')
     .update(row)
-    .eq('id', id)
-    .select()
-    .single();
+    .eq('id', id);
+
+  if (expectedUpdatedAt) {
+    query = query.eq('ngay_cap_nhat', expectedUpdatedAt);
+  }
+
+  const { data, error } = await query.select('*');
 
   if (error) {
     console.error('Lỗi cập nhật hàng dư trên Supabase:', error);
     throw error;
   }
 
-  return mapRowToSurplusItem(data as SurplusRow);
+  if (!data || data.length === 0) {
+    if (expectedUpdatedAt) {
+      throw new ConcurrencyConflictError();
+    }
+    throw new Error('Không tìm thấy bản ghi để cập nhật.');
+  }
+
+  return mapRowToSurplusItem(data[0] as SurplusRow);
 }
 
 /**

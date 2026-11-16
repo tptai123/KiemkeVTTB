@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { DCDNItem } from '../types';
+import { ConcurrencyConflictError } from './errors';
 
 const TABLE_NAME = 'kiem_ke_dcdn';
 export const STORAGE_BUCKET = 'File dcdn';
@@ -93,6 +94,7 @@ export const mapRowToDCDNItem = (row: DCDNItemRow): DCDNItem => ({
   notes: row.ghi_chu || '',
   auditedAt: row.ngay_kiem_ke || undefined,
   auditor: row.nguoi_kiem_ke || undefined,
+  updatedAt: row.ngay_cap_nhat || undefined,
 });
 
 export const mapDCDNItemToRow = (item: Partial<DCDNItem>): Partial<DCDNItemRow> => {
@@ -160,21 +162,35 @@ export const fetchDCDNItems = async (): Promise<DCDNItem[]> => {
 
 export const updateDCDNItemInSupabase = async (
   id: string,
-  updates: Partial<DCDNItem>
+  updates: Partial<DCDNItem>,
+  expectedUpdatedAt?: string
 ): Promise<DCDNItem> => {
   if (!supabase) throw new Error('Supabase chưa được cấu hình.');
 
   const rowUpdates = mapDCDNItemToRow(updates);
+  rowUpdates.ngay_cap_nhat = new Date().toISOString();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from(TABLE_NAME)
     .update(rowUpdates)
-    .eq('id', id)
-    .select()
-    .single();
+    .eq('id', id);
+
+  if (expectedUpdatedAt) {
+    query = query.eq('ngay_cap_nhat', expectedUpdatedAt);
+  }
+
+  const { data, error } = await query.select('*');
 
   if (error) throw error;
-  return mapRowToDCDNItem(data as DCDNItemRow);
+
+  if (!data || data.length === 0) {
+    if (expectedUpdatedAt) {
+      throw new ConcurrencyConflictError();
+    }
+    throw new Error('Không tìm thấy bản ghi để cập nhật.');
+  }
+
+  return mapRowToDCDNItem(data[0] as DCDNItemRow);
 };
 
 export const createDCDNItemInSupabase = async (

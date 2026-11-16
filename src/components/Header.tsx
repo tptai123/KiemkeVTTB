@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Menu, ChevronDown, LogOut, User, Building, Mail, Shield, RefreshCw } from 'lucide-react';
-import { InventoryItem, UserInfo } from '../types';
+import { Menu, ChevronDown, LogOut, User, Building, Mail, Shield, RefreshCw, Users } from 'lucide-react';
+import { InventoryItem, UserInfo, CollaboratorPresence } from '../types';
 
 interface HeaderProps {
   activeModule: 'inventory' | 'dcdn' | 'surplus' | 'users' | 'permissions';
@@ -13,6 +13,7 @@ interface HeaderProps {
   onLogout?: () => void;
   onSync?: () => Promise<void> | void;
   isSyncing?: boolean;
+  collaborators?: CollaboratorPresence[];
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -26,9 +27,12 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onSync,
   isSyncing = false,
+  collaborators = [],
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isCollaboratorsOpen, setIsCollaboratorsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const collabRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -36,14 +40,17 @@ export const Header: React.FC<HeaderProps> = ({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
+      if (collabRef.current && !collabRef.current.contains(event.target as Node)) {
+        setIsCollaboratorsOpen(false);
+      }
     };
-    if (isDropdownOpen) {
+    if (isDropdownOpen || isCollaboratorsOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isCollaboratorsOpen]);
 
   const getModuleTitle = () => {
     switch (activeModule) {
@@ -192,6 +199,59 @@ export const Header: React.FC<HeaderProps> = ({
             />
             <span className="hidden md:inline">Đồng bộ</span>
           </button>
+        )}
+
+        {/* Online Collaborators indicator */}
+        {collaborators && collaborators.length > 0 && (
+          <div className="relative shrink-0" ref={collabRef}>
+            <button
+              type="button"
+              onClick={() => setIsCollaboratorsOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold transition-colors cursor-pointer"
+              title="Danh sách người dùng đang online trên hệ thống"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <Users className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{collaborators.length} online</span>
+            </button>
+
+            {isCollaboratorsOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2.5 z-50 animate-fade-in text-xs">
+                <div className="font-semibold text-slate-800 px-1 py-1 mb-1.5 border-b border-slate-100 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    Đang trực tuyến ({collaborators.length})
+                  </span>
+                  <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-medium">
+                    Realtime
+                  </span>
+                </div>
+                <div className="max-h-52 overflow-y-auto space-y-1 divide-y divide-slate-50">
+                  {collaborators.map((c, i) => (
+                    <div key={i} className="pt-1.5 first:pt-0 flex items-center justify-between gap-2 px-1">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-slate-800 truncate">
+                          {c.userName || c.userId}
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">
+                          {c.userRole || 'Thành viên'}
+                        </div>
+                      </div>
+                      {c.editingItemCode ? (
+                        <span className="shrink-0 text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-medium max-w-[100px] truncate" title={`Đang sửa ${c.editingItemCode}`}>
+                          Sửa {c.editingItemCode}
+                        </span>
+                      ) : (
+                        <span className="shrink-0 text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded capitalize">
+                          {c.activeModule || 'Online'}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* User Profile (Họ và tên dòng trên, Vai trò dòng dưới) */}

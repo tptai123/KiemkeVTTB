@@ -9,7 +9,7 @@ import {
   Trash2,
   Lock,
 } from 'lucide-react';
-import { SurplusItem } from '../types';
+import { SurplusItem, CollaboratorPresence } from '../types';
 
 interface SurplusModalProps {
   isOpen: boolean;
@@ -17,6 +17,8 @@ interface SurplusModalProps {
   onSave: (item: Partial<SurplusItem>, imageFile?: File | null) => Promise<void> | void;
   editingItem?: SurplusItem | null;
   isReadOnly?: boolean;
+  collaborators?: CollaboratorPresence[];
+  currentUserName?: string;
 }
 
 // Hàm nén ảnh trước khi lưu
@@ -79,7 +81,17 @@ export const SurplusModal: React.FC<SurplusModalProps> = ({
   onSave,
   editingItem,
   isReadOnly = false,
+  collaborators = [],
+  currentUserName = '',
 }) => {
+  const otherEditors = collaborators.filter(
+    (c) =>
+      editingItem &&
+      c.editingItemId === editingItem.id &&
+      c.userName !== currentUserName &&
+      c.userId !== currentUserName
+  );
+
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -94,6 +106,7 @@ export const SurplusModal: React.FC<SurplusModalProps> = ({
     image: '',
   });
 
+  const [initialSnapshot, setInitialSnapshot] = useState('');
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,37 +115,37 @@ export const SurplusModal: React.FC<SurplusModalProps> = ({
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (editingItem) {
-      setFormData({
-        code: editingItem.code || '',
-        name: editingItem.name || '',
-        group: editingItem.group || 'Hàng dư',
-        model: editingItem.model || '',
-        unit: editingItem.unit || 'Cái',
-        quantity: editingItem.quantity || 1,
-        condition: editingItem.condition || 'Mới 100%',
-        location: editingItem.location || '',
-        reason: editingItem.reason || '',
-        notes: editingItem.notes || '',
-        image: editingItem.image || '',
-      });
-      setSelectedImageFile(null);
-    } else {
-      setFormData({
-        code: `SD-${Date.now().toString().slice(-6)}`,
-        name: '',
-        group: 'Hàng dư',
-        model: '',
-        unit: 'Cái',
-        quantity: 1,
-        condition: 'Mới 100%',
-        location: '',
-        reason: '',
-        notes: '',
-        image: '',
-      });
-      setSelectedImageFile(null);
-    }
+    const nextFormData = editingItem
+      ? {
+          code: editingItem.code || '',
+          name: editingItem.name || '',
+          group: editingItem.group || 'Hàng dư',
+          model: editingItem.model || '',
+          unit: editingItem.unit || 'Cái',
+          quantity: editingItem.quantity || 1,
+          condition: editingItem.condition || 'Mới 100%',
+          location: editingItem.location || '',
+          reason: editingItem.reason || '',
+          notes: editingItem.notes || '',
+          image: editingItem.image || '',
+        }
+      : {
+          code: `SD-${Date.now().toString().slice(-6)}`,
+          name: '',
+          group: 'Hàng dư',
+          model: '',
+          unit: 'Cái',
+          quantity: 1,
+          condition: 'Mới 100%',
+          location: '',
+          reason: '',
+          notes: '',
+          image: '',
+        };
+
+    setFormData(nextFormData);
+    setInitialSnapshot(JSON.stringify(nextFormData));
+    setSelectedImageFile(null);
     setError('');
   }, [editingItem, isOpen]);
 
@@ -168,8 +181,40 @@ export const SurplusModal: React.FC<SurplusModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSave(
-        {
+      let payloadToSave: Partial<SurplusItem>;
+      if (editingItem) {
+        let initialObj: Record<string, any> = {};
+        try {
+          if (initialSnapshot) initialObj = JSON.parse(initialSnapshot);
+        } catch {}
+
+        payloadToSave = {};
+        if (formData.name.trim() !== (initialObj.name || '')) {
+          payloadToSave.name = formData.name.trim();
+        }
+        if (formData.unit.trim() !== (initialObj.unit || '')) {
+          payloadToSave.unit = formData.unit.trim();
+        }
+        if (Number(formData.quantity) !== Number(initialObj.quantity)) {
+          payloadToSave.quantity = Math.max(1, Number(formData.quantity) || 1);
+        }
+        if (formData.model.trim() !== (initialObj.model || '')) {
+          payloadToSave.model = formData.model.trim();
+        }
+        if (formData.location.trim() !== (initialObj.location || '')) {
+          payloadToSave.location = formData.location.trim();
+        }
+        if (formData.condition.trim() !== (initialObj.condition || '')) {
+          payloadToSave.condition = formData.condition.trim();
+        }
+        if (formData.notes.trim() !== (initialObj.notes || '')) {
+          payloadToSave.notes = formData.notes.trim();
+        }
+        if (selectedImageFile || formData.image !== (initialObj.image || '')) {
+          payloadToSave.image = formData.image || undefined;
+        }
+      } else {
+        payloadToSave = {
           ...formData,
           name: formData.name.trim(),
           unit: formData.unit.trim(),
@@ -178,9 +223,10 @@ export const SurplusModal: React.FC<SurplusModalProps> = ({
           location: formData.location.trim(),
           condition: formData.condition.trim(),
           notes: formData.notes.trim(),
-        },
-        selectedImageFile
-      );
+        };
+      }
+
+      await onSave(payloadToSave, selectedImageFile);
       onClose();
     } catch (err: unknown) {
       console.error('Save surplus item error:', err);
@@ -194,28 +240,39 @@ export const SurplusModal: React.FC<SurplusModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in font-sans">
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden flex flex-col max-h-[92vh] animate-scale-up">
         {/* Modal Header */}
-        <div className="px-5 sm:px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
-              <Package className="w-5 h-5" />
+        <div className="px-5 sm:px-6 py-4 bg-slate-900 text-white flex flex-col shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+                <Package className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base sm:text-lg leading-tight">
+                  Thông tin vật tư
+                </h3>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Xem và cập nhật thông tin chi tiết vật tư hàng dư
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-base sm:text-lg leading-tight">
-                Thông tin vật tư
-              </h3>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Xem và cập nhật thông tin chi tiết vật tư hàng dư
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              aria-label="Đóng"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-            aria-label="Đóng"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          {otherEditors.length > 0 && (
+            <div className="mt-3 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-300/40 text-amber-200 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-300" />
+              <span>
+                <strong>{otherEditors.map((e) => e.userName).join(', ')}</strong> cũng đang mở vật tư này! Cẩn trọng kiểm tra để tránh ghi đè dữ liệu.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Modal Body */}

@@ -29,7 +29,9 @@ import {
   DCDNItem,
   SurplusItem,
   UserInfo,
+  CollaboratorPresence,
 } from './types';
+import { ConcurrencyConflictError } from './services/errors';
 import {
   fetchRolePermissionsFromSupabase,
   saveAllRolePermissionsToSupabase,
@@ -50,6 +52,7 @@ import {
   createDCDNItemInSupabase,
   bulkCreateDCDNItemsInSupabase,
   uploadDCDNImageToSupabase,
+  mapRowToDCDNItem,
 } from './services/dcdnService';
 import {
   fetchSurplusItemsFromSupabase,
@@ -163,6 +166,13 @@ export default function App() {
 
   const [isSurModalOpen, setIsSurModalOpen] = useState(false);
   const [editingSurItem, setEditingSurItem] = useState<SurplusItem | null>(null);
+
+  // Collaborators Presence
+  const [collaborators, setCollaborators] = useState<CollaboratorPresence[]>([]);
+  const presenceChannelRef = useRef<any>(null);
+
+  const activeEditingId = editingInvItem?.id || editingDCDNItem?.id || editingSurItem?.id || null;
+  const activeEditingCode = editingInvItem?.code || editingDCDNItem?.code || editingSurItem?.code || null;
 
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importModuleType, setImportModuleType] = useState<'inventory' | 'dcdn' | 'surplus'>('inventory');
@@ -295,7 +305,7 @@ export default function App() {
     };
   }, []);
 
-  // Supabase Realtime for kiem_ke_dcdn
+  // Supabase Realtime for kiem_ke_dcdn (Delta sync to optimize multi-user performance)
   useEffect(() => {
     const client = supabase;
     if (!isDCDNConnected || !client) return;
@@ -305,8 +315,22 @@ export default function App() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'kiem_ke_dcdn' },
-        () => {
-          fetchDCDNItems().then((items) => setDcdnItems(items)).catch(() => {});
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newItem = mapRowToDCDNItem(payload.new as Parameters<typeof mapRowToDCDNItem>[0]);
+            setDcdnItems((prev) => {
+              if (prev.some((i) => i.id === newItem.id)) return prev;
+              return [newItem, ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = mapRowToDCDNItem(payload.new as Parameters<typeof mapRowToDCDNItem>[0]);
+            setDcdnItems((prev) =>
+              prev.map((i) => (i.id === updated.id ? updated : i))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as { id: string }).id;
+            setDcdnItems((prev) => prev.filter((i) => i.id !== deletedId));
+          }
         }
       )
       .subscribe();
@@ -315,6 +339,31 @@ export default function App() {
       client.removeChannel(channel);
     };
   }, [isDCDNConnected]);
+
+  // Supabase Realtime — subscribe to role_permissions changes
+  useEffect(() => {
+    const client = supabase;
+    if (!client) return;
+
+    const channel = client
+      .channel('role_permissions_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'role_permissions' },
+        () => {
+          fetchRolePermissionsFromSupabase()
+            .then((data) => {
+              if (data) setRolePermissions(data);
+            })
+            .catch(() => {});
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, []);
 
   // Surplus connection state
   const [isSurplusConnected, setIsSurplusConnected] = useState(false);
@@ -409,6 +458,70 @@ export default function App() {
     };
   }, [currentUser?.email, currentUser?.id, currentUser?.authId]);
 
+  // Supabase Presence Tracking for Online Collaborators & Collision Detection
+  useEffect(() => {
+    const client = supabase;
+    if (!client || !currentUser) return;
+
+    const presenceKey = currentUser.email || currentUser.id || 'user_' + Math.random().toString(36).slice(2, 6);
+    const channel = client.channel('vttb_collaborators_presence', {
+      config: {
+        presence: {
+          key: presenceKey,
+        },
+      },
+    });
+
+    presenceChannelRef.current = channel;
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const presenceState = channel.presenceState<CollaboratorPresence>();
+        const list: CollaboratorPresence[] = [];
+        for (const key of Object.keys(presenceState)) {
+          const presences = presenceState[key];
+          if (presences && presences.length > 0) {
+            list.push(presences[0]);
+          }
+        }
+        setCollaborators(list);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            userId: currentUser.email || currentUser.name,
+            userName: currentUser.name || currentUser.email,
+            userRole: currentUser.role,
+            activeModule,
+            editingItemId: activeEditingId,
+            editingItemCode: activeEditingCode,
+            onlineAt: new Date().toISOString(),
+          });
+        }
+      });
+
+    return () => {
+      channel.unsubscribe();
+      presenceChannelRef.current = null;
+    };
+  }, [currentUser?.email, currentUser?.name, currentUser?.role]);
+
+  // Broadcast editing item / active module changes via Presence
+  useEffect(() => {
+    if (!presenceChannelRef.current || !currentUser) return;
+    presenceChannelRef.current
+      .track({
+        userId: currentUser.email || currentUser.name,
+        userName: currentUser.name || currentUser.email,
+        userRole: currentUser.role,
+        activeModule,
+        editingItemId: activeEditingId,
+        editingItemCode: activeEditingCode,
+        onlineAt: new Date().toISOString(),
+      })
+      .catch(() => {});
+  }, [activeModule, activeEditingId, activeEditingCode, currentUser]);
+
   // State & Handler for Syncing Data from Supabase
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -486,14 +599,22 @@ export default function App() {
     if (editingInvItem) {
       if (isSupabaseConnected) {
         try {
-          const updated = await updateInventoryItemInSupabase(editingInvItem.id, payloadToSave);
+          const updated = await updateInventoryItemInSupabase(
+            editingInvItem.id,
+            payloadToSave,
+            editingInvItem.updatedAt
+          );
           setInventoryItems((prev) =>
             prev.map((item) => (item.id === editingInvItem.id ? updated : item))
           );
           showToast(`Đã lưu vật tư ${updated.code} lên Supabase`);
         } catch (err) {
-          console.error('Supabase update error:', err);
-          showToast(`Lỗi lưu Supabase cho vật tư ${editingInvItem.code}`, 'error');
+          if (err instanceof ConcurrencyConflictError) {
+            showToast(err.message, 'error');
+          } else {
+            console.error('Supabase update error:', err);
+            showToast(`Lỗi lưu Supabase cho vật tư ${editingInvItem.code}`, 'error');
+          }
         }
       } else {
         setInventoryItems((prev) =>
@@ -585,21 +706,29 @@ export default function App() {
     if (editingDCDNItem) {
       if (isDCDNConnected) {
         try {
-          const updated = await updateDCDNItemInSupabase(editingDCDNItem.id, payloadToSave);
+          const updated = await updateDCDNItemInSupabase(
+            editingDCDNItem.id,
+            payloadToSave,
+            editingDCDNItem.updatedAt
+          );
           setDcdnItems((prev) =>
             prev.map((item) => (item.id === editingDCDNItem.id ? updated : item))
           );
           showToast(`Đã cập nhật dụng cụ ${itemData.code} lên Supabase`);
         } catch (err) {
-          console.error('Supabase update DCDN error:', err);
-          setDcdnItems((prev) =>
-            prev.map((item) =>
-              item.id === editingDCDNItem.id
-                ? ({ ...item, ...payloadToSave } as DCDNItem)
-                : item
-            )
-          );
-          showToast(`Lỗi lưu Supabase cho dụng cụ ${editingDCDNItem.code}`, 'error');
+          if (err instanceof ConcurrencyConflictError) {
+            showToast(err.message, 'error');
+          } else {
+            console.error('Supabase update DCDN error:', err);
+            setDcdnItems((prev) =>
+              prev.map((item) =>
+                item.id === editingDCDNItem.id
+                  ? ({ ...item, ...payloadToSave } as DCDNItem)
+                  : item
+              )
+            );
+            showToast(`Lỗi lưu Supabase cho dụng cụ ${editingDCDNItem.code}`, 'error');
+          }
         }
       } else {
         setDcdnItems((prev) =>
@@ -690,7 +819,11 @@ export default function App() {
     if (isSurplusConnected) {
       try {
         if (editingSurItem) {
-          const updated = await updateSurplusItemInSupabase(editingSurItem.id, payloadToSave);
+          const updated = await updateSurplusItemInSupabase(
+            editingSurItem.id,
+            payloadToSave,
+            editingSurItem.updatedAt
+          );
           setSurplusItems((prev) =>
             prev.map((item) => (item.id === editingSurItem.id ? updated : item))
           );
@@ -701,34 +834,38 @@ export default function App() {
           showToast(`Đã thêm mới vật tư ${created.name || created.code} thành công`);
         }
       } catch (err) {
-        console.error('Lỗi lưu vật tư hàng dư vào Supabase:', err);
-        showToast('Lỗi khi lưu vào Supabase, đang lưu tạm cục bộ', 'error');
-        // Fallback local update
-        if (editingSurItem) {
-          setSurplusItems((prev) =>
-            prev.map((item) =>
-              item.id === editingSurItem.id
-                ? ({ ...item, ...payloadToSave } as SurplusItem)
-                : item
-            )
-          );
+        if (err instanceof ConcurrencyConflictError) {
+          showToast(err.message, 'error');
         } else {
-          const newItem: SurplusItem = {
-            id: `sur-${Date.now()}`,
-            code: itemData.code || `SD-${Date.now().toString().slice(-6)}`,
-            name: itemData.name || 'Hàng dư mới',
-            group: itemData.group || 'Hàng dư',
-            model: itemData.model || '',
-            unit: itemData.unit || 'Cái',
-            quantity: itemData.quantity || 1,
-            condition: itemData.condition || 'Mới 100%',
-            location: itemData.location || '',
-            reason: itemData.reason || '',
-            notes: itemData.notes || '',
-            image: resolvedImage,
-            createdAt: new Date().toISOString(),
-          };
-          setSurplusItems((prev) => [newItem, ...prev]);
+          console.error('Lỗi lưu vật tư hàng dư vào Supabase:', err);
+          showToast('Lỗi khi lưu vào Supabase, đang lưu tạm cục bộ', 'error');
+          // Fallback local update
+          if (editingSurItem) {
+            setSurplusItems((prev) =>
+              prev.map((item) =>
+                item.id === editingSurItem.id
+                  ? ({ ...item, ...payloadToSave } as SurplusItem)
+                  : item
+              )
+            );
+          } else {
+            const newItem: SurplusItem = {
+              id: `sur-${Date.now()}`,
+              code: itemData.code || `SD-${Date.now().toString().slice(-6)}`,
+              name: itemData.name || 'Hàng dư mới',
+              group: itemData.group || 'Hàng dư',
+              model: itemData.model || '',
+              unit: itemData.unit || 'Cái',
+              quantity: itemData.quantity || 1,
+              condition: itemData.condition || 'Mới 100%',
+              location: itemData.location || '',
+              reason: itemData.reason || '',
+              notes: itemData.notes || '',
+              image: resolvedImage,
+              createdAt: new Date().toISOString(),
+            };
+            setSurplusItems((prev) => [newItem, ...prev]);
+          }
         }
       }
     } else {
@@ -1008,6 +1145,7 @@ export default function App() {
           onLogout={handleLogout}
           onSync={handleSyncAllData}
           isSyncing={isSyncing}
+          collaborators={collaborators}
         />
 
         <main
@@ -1124,6 +1262,7 @@ export default function App() {
           availableProposals={availableProposals}
           currentUserName={currentUser?.name || INITIAL_USER.name}
           isReadOnly={!currentUserPermissions.canAuditInventory}
+          collaborators={collaborators}
         />
       )}
 
@@ -1136,6 +1275,7 @@ export default function App() {
           availableProposals={availableDCDNProposals}
           currentUserName={currentUser?.name || INITIAL_USER.name}
           isReadOnly={!currentUserPermissions.canAuditDCDN}
+          collaborators={collaborators}
         />
       )}
 
@@ -1149,6 +1289,8 @@ export default function App() {
             ? !currentUserPermissions.canManageSurplus
             : !currentUserPermissions.canAddSurplus
         }
+        collaborators={collaborators}
+        currentUserName={currentUser?.name || INITIAL_USER.name}
       />
 
       <ImportModal

@@ -18,6 +18,7 @@ export interface InventoryItem {
   notes: string;
   auditedAt?: string;
   auditor?: string;
+  updatedAt?: string;
 }
 
 export interface DCDNItem {
@@ -38,6 +39,7 @@ export interface DCDNItem {
   notes: string;
   auditedAt?: string;
   auditor?: string;
+  updatedAt?: string;
 }
 
 export interface SurplusItem {
@@ -54,6 +56,17 @@ export interface SurplusItem {
   notes: string;
   image?: string;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CollaboratorPresence {
+  userId: string;
+  userName: string;
+  userRole?: string;
+  activeModule?: string;
+  editingItemId?: string | null;
+  editingItemCode?: string | null;
+  onlineAt?: string;
 }
 
 export type InventoryStatus = 'all' | 'match' | 'missing' | 'surplus' | 'pending';
