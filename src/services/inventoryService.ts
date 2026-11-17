@@ -217,12 +217,39 @@ export const bulkCreateInventoryItemsInSupabase = async (
 
   for (let i = 0; i < items.length; i += CHUNK_SIZE) {
     const chunk = items.slice(i, i + CHUNK_SIZE).map(mapInventoryItemToRowPayload);
-    const { data, error } = await supabase
+
+    // 1. Thử upsert với onConflict composite (ma_vat_tu, ten_vat_tu, kho) và ignoreDuplicates
+    let { data, error } = await supabase
       .from(TABLE_NAME)
-      .insert(chunk)
+      .upsert(chunk, {
+        onConflict: 'ma_vat_tu,ten_vat_tu,kho',
+        ignoreDuplicates: true,
+      })
       .select('*');
 
-    if (error) throw error;
+    // 2. Nếu CSDL chưa tạo composite unique constraint, fallback sang insert thông thường
+    if (error && (error.code === '42P10' || error.message?.includes('ON CONFLICT'))) {
+      const insertRes = await supabase
+        .from(TABLE_NAME)
+        .insert(chunk)
+        .select('*');
+      data = insertRes.data;
+      error = insertRes.error;
+    }
+
+    if (error) {
+      if (
+        error.message?.includes('inventory_items_code_key') ||
+        error.message?.includes('kiem_ke_vttb_ma_vat_tu_key')
+      ) {
+        throw new Error(
+          'CSDL Supabase hiện đang cài đặt ràng buộc UNIQUE chỉ trên một cột "Mã vật tư", không cho phép cùng Mã khác Kho hoặc khác Tên. ' +
+          'Vui lòng chạy file script SQL "supabase/update_import_unique_constraints.sql" trên Supabase SQL Editor để cập nhật ràng buộc UNIQUE (Mã, Tên, Kho).'
+        );
+      }
+      throw error;
+    }
+
     if (data) {
       createdAll.push(...(data as InventoryItemRow[]).map(mapRowToInventoryItem));
     }

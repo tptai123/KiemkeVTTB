@@ -41,8 +41,22 @@ const normalizeHeader = (header: string): string =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '');
 
-const makeCompositeKey = (code: string, name: string, warehouse: string): string =>
-  `${code.trim().toLowerCase()}||${name.trim().toLowerCase()}||${warehouse.trim().toLowerCase()}`;
+const cleanStr = (val: unknown): string => {
+  if (val === null || val === undefined) return '';
+  return String(val)
+    .normalize('NFC')
+    .replace(/[\s\u00A0]+/g, ' ')
+    .trim()
+    .toLowerCase();
+};
+
+const makeCompositeKey = (code: string, name: string, warehouse: string, isDCDN: boolean = false): string => {
+  const normCode = cleanStr(code);
+  const normName = cleanStr(name);
+  const defaultWarehouse = isDCDN ? 'kho dcdn' : 'kho chính';
+  const normWarehouse = cleanStr(warehouse) || defaultWarehouse;
+  return `${normCode}||${normName}||${normWarehouse}`;
+};
 
 const parseNumericCell = (val: unknown): number => {
   if (typeof val === 'number') return isNaN(val) ? 0 : val;
@@ -74,16 +88,20 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   const [validNewItems, setValidNewItems] = useState<Partial<InventoryItem>[]>([]);
   const [previewRows, setPreviewRows] = useState<PreviewRowInfo[]>([]);
 
-  const isInventoryModule = (moduleName === 'Kiểm Kê VTTB' || moduleName.includes('DCĐN')) && Boolean(onImportInventoryItems);
+  const isDCDN = moduleName.includes('DCĐN');
+  const defaultWarehouse = isDCDN ? 'Kho DCĐN' : 'Kho chính';
+  const isInventoryModule = (moduleName === 'Kiểm Kê VTTB' || isDCDN) && Boolean(onImportInventoryItems);
 
   // Build O(1) lookup Set of (Mã vật tư, Tên vật tư, Kho) from existing table data
   const existingKeySet = useMemo(() => {
     const set = new Set<string>();
     for (const item of existingItems) {
-      set.add(makeCompositeKey(item.code || '', item.name || '', item.warehouse || ''));
+      if (item.code && item.name) {
+        set.add(makeCompositeKey(item.code, item.name, item.warehouse || defaultWarehouse, isDCDN));
+      }
     }
     return set;
-  }, [existingItems]);
+  }, [existingItems, defaultWarehouse, isDCDN]);
 
   const duplicateCount = useMemo(
     () => previewRows.filter((r) => r.status !== 'ok').length,
@@ -226,12 +244,14 @@ export const ImportModal: React.FC<ImportModalProps> = ({
             normalizedRow['name'] ??
             ''
         ).trim();
-        const warehouse = String(
+        const rawWarehouse = String(
           normalizedRow['kho'] ?? normalizedRow['warehouse'] ?? ''
         ).trim();
+        const warehouse = rawWarehouse || defaultWarehouse;
+        const defaultUnit = isDCDN ? 'Bộ' : 'Chiếc';
         const unit = String(
-          normalizedRow['dvt'] ?? normalizedRow['donvitinh'] ?? normalizedRow['unit'] ?? 'Bộ'
-        ).trim();
+          normalizedRow['dvt'] ?? normalizedRow['donvitinh'] ?? normalizedRow['unit'] ?? defaultUnit
+        ).trim() || defaultUnit;
         const bookQty = parseNumericCell(
           normalizedRow['soluongsosach'] ??
             normalizedRow['slsosach'] ??
@@ -245,7 +265,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         ).trim();
 
         // Skip completely blank rows
-        if (!code && !name && !warehouse && !location) return;
+        if (!code && !name && !rawWarehouse && !location) return;
 
         if (!code || !name) {
           previews.push({
@@ -253,8 +273,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({
             status: 'invalid',
             code: code || '(Trống)',
             name: name || '(Trống)',
-            warehouse: warehouse || '(Trống)',
-            unit: unit || 'Chiếc',
+            warehouse,
+            unit,
             bookQty,
             location,
             reason: 'Thiếu Mã vật tư hoặc Tên vật tư',
@@ -262,18 +282,18 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           return;
         }
 
-        const key = makeCompositeKey(code, name, warehouse);
+        const key = makeCompositeKey(code, name, warehouse, isDCDN);
         if (existingKeySet.has(key)) {
           previews.push({
             rowNumber,
             status: 'duplicate',
             code,
             name,
-            warehouse: warehouse || '(Trống)',
-            unit: unit || 'Chiếc',
+            warehouse,
+            unit,
             bookQty,
             location,
-            reason: 'Trùng Mã vật tư, Tên vật tư, Kho với bảng dữ liệu',
+            reason: 'Trùng Mã vật tư, Tên vật tư và Kho với bảng dữ liệu',
           });
           return;
         }
@@ -284,11 +304,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({
             status: 'duplicate',
             code,
             name,
-            warehouse: warehouse || '(Trống)',
-            unit: unit || 'Chiếc',
+            warehouse,
+            unit,
             bookQty,
             location,
-            reason: 'Trùng lặp ngay trong tệp import',
+            reason: 'Trùng lặp ngay trong tệp tải lên (cùng Mã, Tên và Kho)',
           });
           return;
         }
@@ -299,16 +319,16 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           status: 'ok',
           code,
           name,
-          warehouse: warehouse || 'Kho chính',
-          unit: unit || 'Chiếc',
+          warehouse,
+          unit,
           bookQty,
           location,
         });
         newItems.push({
           code,
           name,
-          warehouse: warehouse || 'Kho chính',
-          unit: unit || 'Chiếc',
+          warehouse,
+          unit,
           bookQty,
           actualQty: null,
           location,
@@ -471,9 +491,28 @@ export const ImportModal: React.FC<ImportModalProps> = ({
 
               {/* Parse Error */}
               {parseError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-red-800 text-xs">
-                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                  <span>{parseError}</span>
+                <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex flex-col gap-2 text-red-800 text-xs">
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <span className="font-medium leading-relaxed">{parseError}</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-0.5 pl-6">
+                    <button
+                      type="button"
+                      onClick={handleImport}
+                      disabled={isUploading || validNewItems.length === 0}
+                      className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-xs transition-colors shadow-2xs"
+                    >
+                      Thử lại
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setParseError(null)}
+                      className="px-2.5 py-1 text-slate-600 hover:text-slate-800 text-xs hover:underline"
+                    >
+                      Bỏ qua
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -587,14 +626,12 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                   disabled={
                     !fileName ||
                     isUploading ||
-                    Boolean(parseError) ||
                     (isInventoryModule && validNewItems.length === 0)
                   }
                   onClick={handleImport}
                   className={`px-5 py-2 rounded-xl text-white text-sm font-medium shadow-md transition-all flex items-center gap-2 ${
                     !fileName ||
                     isUploading ||
-                    Boolean(parseError) ||
                     (isInventoryModule && validNewItems.length === 0)
                       ? 'bg-slate-300 cursor-not-allowed shadow-none'
                       : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25'
@@ -606,7 +643,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                       <span>Đang lưu...</span>
                     </>
                   ) : isInventoryModule && validNewItems.length > 0 ? (
-                    <span>Lưu & Import {validNewItems.length} dòng đủ điều kiện</span>
+                    <span>Lưu & Import {validNewItems.length.toLocaleString('vi-VN')} dòng đủ điều kiện</span>
                   ) : (
                     <span>Tiến hành Import</span>
                   )}

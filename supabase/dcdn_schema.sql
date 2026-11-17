@@ -5,7 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS public.kiem_ke_dcdn (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  ma_dung_cu text NOT NULL UNIQUE,                    -- Mã DCĐN
+  ma_dung_cu text NOT NULL,                           -- Mã DCĐN
   ten_dung_cu text NOT NULL,                          -- Tên dụng cụ đồ nghề
   nhom_dung_cu text NOT NULL DEFAULT 'Dụng cụ đo nghiệm', -- Nhóm dụng cụ
   model text NOT NULL DEFAULT '',                     -- Model / Quy cách
@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS public.kiem_ke_dcdn (
   ngay_kiem_ke text NULL,                             -- Ngày kiểm kê (DD/MM/YY)
   nguoi_kiem_ke text NULL,                            -- Tên User kiểm kê
   ngay_tao timestamptz NOT NULL DEFAULT now(),
-  ngay_cap_nhat timestamptz NOT NULL DEFAULT now()
+  ngay_cap_nhat timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT kiem_ke_dcdn_unique_code_name_kho UNIQUE (ma_dung_cu, ten_dung_cu, kho)
 );
 
 -- Index phục vụ tìm kiếm / lọc nhanh

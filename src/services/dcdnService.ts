@@ -217,15 +217,45 @@ export const bulkCreateDCDNItemsInSupabase = async (
   if (items.length === 0) return 0;
 
   const rows = items.map((i) => mapDCDNItemToRow(i));
-
   const BATCH_SIZE = 500;
   let inserted = 0;
 
   for (let idx = 0; idx < rows.length; idx += BATCH_SIZE) {
     const chunk = rows.slice(idx, idx + BATCH_SIZE);
-    const { error } = await supabase.from(TABLE_NAME).insert(chunk);
-    if (error) throw error;
-    inserted += chunk.length;
+
+    // 1. Thử upsert với onConflict composite (ma_dung_cu, ten_dung_cu, kho) và ignoreDuplicates
+    let { data, error } = await supabase
+      .from(TABLE_NAME)
+      .upsert(chunk, {
+        onConflict: 'ma_dung_cu,ten_dung_cu,kho',
+        ignoreDuplicates: true,
+      })
+      .select('id');
+
+    // 2. Nếu CSDL chưa tạo composite unique constraint, fallback sang insert thông thường
+    if (error && (error.code === '42P10' || error.message?.includes('ON CONFLICT'))) {
+      const insertRes = await supabase
+        .from(TABLE_NAME)
+        .insert(chunk)
+        .select('id');
+      data = insertRes.data;
+      error = insertRes.error;
+    }
+
+    if (error) {
+      if (
+        error.message?.includes('kiem_ke_dcdn_ma_dung_cu_key') ||
+        error.message?.includes('dcdn_items_code_key')
+      ) {
+        throw new Error(
+          'CSDL Supabase hiện đang cài đặt ràng buộc UNIQUE chỉ trên một cột "Mã DCĐN". ' +
+          'Vui lòng chạy file script SQL "supabase/update_import_unique_constraints.sql" trên Supabase SQL Editor để cập nhật ràng buộc UNIQUE (Mã, Tên, Kho).'
+        );
+      }
+      throw error;
+    }
+
+    inserted += data?.length ?? chunk.length;
   }
 
   return inserted;

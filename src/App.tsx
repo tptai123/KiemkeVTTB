@@ -959,12 +959,9 @@ export default function App() {
     if (itemsToImport.length === 0) return;
 
     if (isSupabaseConnected) {
-      const created = await bulkCreateInventoryItemsInSupabase(itemsToImport);
-      setInventoryItems((prev) => {
-        const existingIds = new Set(prev.map((i) => i.id));
-        const uniqueCreated = created.filter((c) => !existingIds.has(c.id));
-        return [...uniqueCreated, ...prev];
-      });
+      await bulkCreateInventoryItemsInSupabase(itemsToImport);
+      const reloaded = await fetchInventoryItems();
+      setInventoryItems(reloaded);
     } else {
       const now = Date.now();
       const localCreated: InventoryItem[] = itemsToImport.map((item, idx) => ({

@@ -5,7 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS public.kiem_ke_vttb (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  ma_vat_tu text NOT NULL UNIQUE,                    -- Mã vật tư
+  ma_vat_tu text NOT NULL,                           -- Mã vật tư
   ten_vat_tu text NOT NULL,                          -- Tên vật tư
   nhom_vat_tu text NOT NULL DEFAULT 'Thiết bị IT',   -- Nhóm vật tư
   model text NOT NULL DEFAULT '',                    -- Model / Quy cách
@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS public.kiem_ke_vttb (
   ngay_kiem_ke text NULL,                            -- Ngày kiểm kê (DD/MM/YY)
   nguoi_kiem_ke text NULL,                           -- User kiểm kê
   ngay_tao timestamptz NOT NULL DEFAULT now(),
-  ngay_cap_nhat timestamptz NOT NULL DEFAULT now()
+  ngay_cap_nhat timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT kiem_ke_vttb_unique_code_name_kho UNIQUE (ma_vat_tu, ten_vat_tu, kho)
 );
 
 -- Index phục vụ tìm kiếm / lọc nhanh cho ~10.000+ dòng
