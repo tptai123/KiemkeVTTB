@@ -357,10 +357,10 @@ export const UsersModule: React.FC<UsersModuleProps> = ({
 
       {/* Desktop Table View */}
       <div className="hidden md:block bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600">
+        <div className="table-scrollbar max-h-[72vh]">
+          <table className="w-full min-w-[850px] text-left border-collapse">
+            <thead className="sticky top-0 z-10 bg-slate-50">
+              <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600">
                 <th className="py-3.5 px-3 text-center w-14">Stt</th>
                 <th className="py-3.5 px-5">Nhân sự</th>
                 <th className="py-3.5 px-4">Vai trò</th>

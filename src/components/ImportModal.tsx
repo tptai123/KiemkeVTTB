@@ -544,8 +544,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                   </div>
 
                   {/* Table */}
-                  <div className="max-h-[42vh] overflow-auto no-scrollbar">
-                    <table className="w-full text-xs text-left border-collapse">
+                  <div className="max-h-[46vh] table-scrollbar">
+                    <table className="w-full min-w-[960px] text-xs text-left border-collapse">
                       <thead className="bg-slate-100 text-slate-800 sticky top-0 z-10">
                         <tr>
                           <th className="py-2 px-2.5 border-b border-r border-slate-200 text-center w-12">Dòng</th>

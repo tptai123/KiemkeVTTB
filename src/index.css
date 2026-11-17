@@ -12,27 +12,93 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Ẩn thanh cuộn lên xuống (vertical scrollbar) trên toàn bộ trang nhưng vẫn giữ chức năng cuộn mượt */
-::-webkit-scrollbar:vertical {
-  width: 0px !important;
-  display: none !important;
+/* =============================================================================
+   THANH CUỘN (SCROLLBAR) HIỆN ĐẠI, THANH LỊCH CHO TOÀN ỨNG DỤNG VÀ BẢNG DỮ LIỆU
+   ============================================================================= */
+
+/* Cấu hình chung cho trình duyệt WebKit (Chrome, Safari, Edge, Opera) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-/* Ẩn thanh cuộn cho các container cuộn dọc (Chrome, Safari, Edge, Firefox) */
-.overflow-y-auto,
-.overflow-y-scroll,
-.overflow-auto,
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  border: 2px solid #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #64748b;
+}
+
+::-webkit-scrollbar-corner {
+  background: #f1f5f9;
+}
+
+/* Hỗ trợ Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+/* Class chuyên dụng cho Bảng dữ liệu: Tự động hiển thị thanh cuộn dọc & ngang khi vượt quá kích thước */
+.table-scrollbar {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #94a3b8 #f1f5f9 !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scrollbar::-webkit-scrollbar {
+  width: 9px !important;
+  height: 9px !important;
+  display: block !important;
+}
+
+.table-scrollbar::-webkit-scrollbar-track {
+  background: #f8fafc !important;
+  border-radius: 9999px;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 9999px;
+  border: 2px solid #f8fafc !important;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb:active {
+  background: #64748b !important;
+}
+
+.table-scrollbar::-webkit-scrollbar-corner {
+  background: #f8fafc !important;
+}
+
+/* Class chỉ ẩn thanh cuộn khi chủ động gắn .no-scrollbar hoặc .hide-scrollbar (cho thanh tag, menu thu gọn, modal nhỏ) */
 .no-scrollbar,
 .hide-scrollbar {
-  scrollbar-width: none !important; /* Firefox */
-  -ms-overflow-style: none !important; /* IE/Edge */
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
-.overflow-y-auto::-webkit-scrollbar,
-.overflow-y-scroll::-webkit-scrollbar,
-.overflow-auto::-webkit-scrollbar:vertical,
 .no-scrollbar::-webkit-scrollbar,
 .hide-scrollbar::-webkit-scrollbar {
   display: none !important;
   width: 0px !important;
+  height: 0px !important;
 }

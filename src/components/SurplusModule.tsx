@@ -466,11 +466,11 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
       <div className="hidden md:flex bg-white rounded-xl shadow-2xs border border-slate-200 flex-1 min-h-0 flex-col overflow-hidden text-[13px] sm:text-[14px]">
         <div
           ref={tableContainerRef}
-          className="overflow-x-auto overflow-y-auto flex-1 no-scrollbar"
+          className="table-scrollbar flex-1"
         >
           <table className="w-full min-w-[1450px] text-left border-collapse border border-slate-200">
             {/* Tiêu đề bảng: Đều căn giữa (text-center), nền nhẹ, đường kẻ mỏng */}
-            <thead className="bg-slate-100/90 sticky top-0 z-10 shadow-2xs">
+            <thead className="bg-slate-100 sticky top-0 z-10 shadow-2xs">
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-700 divide-x divide-slate-200 border-b border-slate-200">
                 <th className="py-2.5 px-2 text-center w-12 shrink-0">STT</th>
                 <th className="py-2.5 px-2 text-center w-16 shrink-0">Hình ảnh</th>

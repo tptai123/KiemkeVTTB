@@ -913,8 +913,7 @@ export const DCDNModule: React.FC<DCDNModuleProps> = ({
       {/* DATA PRESENTATION */}
       <div className="bg-white rounded-xl shadow-2xs border border-slate-200 flex-1 min-h-0 overflow-hidden flex flex-col text-[14px]">
         <div
-          className="overflow-x-auto overflow-y-auto flex-1 no-scrollbar"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="table-scrollbar flex-1"
           ref={tableContainerRef}
         >
           {isMobile ? (
@@ -950,7 +949,7 @@ export const DCDNModule: React.FC<DCDNModuleProps> = ({
             )
           ) : (
             /* GIAO DIỆN DESKTOP: BẢNG DỮ LIỆU ĐẦY ĐỦ 9 CỘT (KHÔNG CÓ NHẬP/XUẤT) */
-            <table className="w-full border-collapse border border-slate-200 text-[14px]">
+            <table className="w-full min-w-[1260px] border-collapse border border-slate-200 text-[14px]">
               <thead>
                 <tr className="sticky top-0 z-10 bg-slate-100 shadow-xs text-[14px]">
                   <th className="py-2 px-2 text-center text-slate-900 font-semibold w-12 whitespace-nowrap border border-slate-200">

@@ -90,10 +90,10 @@ export const PermissionsModule: React.FC<PermissionsModuleProps> = ({
     <div className="space-y-4 pb-12 animate-fade-in font-sans">
       {/* Desktop Permission Matrix View */}
       <div className="hidden lg:block bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-700">
+        <div className="table-scrollbar max-h-[75vh]">
+          <table className="w-full min-w-[900px] text-left border-collapse">
+            <thead className="sticky top-0 z-10 bg-slate-50">
+              <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-700">
                 <th className="py-3.5 px-5 min-w-[280px]">Chức năng & Hành động</th>
                 <th className="py-3.5 px-4 text-center w-48">
                   <span className="inline-flex items-center gap-1 text-blue-700 font-bold">
