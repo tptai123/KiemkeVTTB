@@ -13,80 +13,22 @@ html, body {
 }
 
 /* =============================================================================
-   THANH CUỘN (SCROLLBAR) HIỆN ĐẠI, THANH LỊCH CHO TOÀN ỨNG DỤNG VÀ BẢNG DỮ LIỆU
+   THANH CUỘN (SCROLLBAR) MẶC ĐỊNH - KÉO MƯỢT, NHẠY, PHẢN HỒI TỨC THÌ
    ============================================================================= */
 
-/* Cấu hình chung cho trình duyệt WebKit (Chrome, Safari, Edge, Opera) */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-  border: 2px solid #f1f5f9;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-::-webkit-scrollbar-thumb:active {
-  background: #64748b;
-}
-
-::-webkit-scrollbar-corner {
-  background: #f1f5f9;
-}
-
-/* Hỗ trợ Firefox */
+/* Giữ thanh cuộn mặc định tự nhiên của hệ thống/trình duyệt để kéo nhạy, dễ bấm */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f1f5f9;
+  scrollbar-width: auto;
 }
 
-/* Class chuyên dụng cho Bảng dữ liệu: Tự động hiển thị thanh cuộn dọc & ngang khi vượt quá kích thước */
+/* Class chuyên dụng cho Bảng dữ liệu: Thanh cuộn dọc & ngang mặc định, kéo mượt mà, phản hồi tức thì */
 .table-scrollbar {
   overflow-x: auto !important;
   overflow-y: auto !important;
-  scrollbar-width: thin !important;
-  scrollbar-color: #94a3b8 #f1f5f9 !important;
+  scrollbar-width: auto !important; /* Thanh cuộn mặc định của trình duyệt */
   -webkit-overflow-scrolling: touch;
-}
-
-.table-scrollbar::-webkit-scrollbar {
-  width: 9px !important;
-  height: 9px !important;
-  display: block !important;
-}
-
-.table-scrollbar::-webkit-scrollbar-track {
-  background: #f8fafc !important;
-  border-radius: 9999px;
-}
-
-.table-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1 !important;
-  border-radius: 9999px;
-  border: 2px solid #f8fafc !important;
-}
-
-.table-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8 !important;
-}
-
-.table-scrollbar::-webkit-scrollbar-thumb:active {
-  background: #64748b !important;
-}
-
-.table-scrollbar::-webkit-scrollbar-corner {
-  background: #f8fafc !important;
+  overscroll-behavior: contain;
+  scroll-behavior: auto; /* Phản hồi tức thì khi kéo thả chuột */
 }
 
 /* Class chỉ ẩn thanh cuộn khi chủ động gắn .no-scrollbar hoặc .hide-scrollbar (cho thanh tag, menu thu gọn, modal nhỏ) */

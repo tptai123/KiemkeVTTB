@@ -523,7 +523,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
     count: filteredItems.length,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => (isMobile ? 142 : 48),
-    overscan: isMobile ? 4 : 8,
+    overscan: isMobile ? 8 : 25,
   });
 
   const virtualRows = rowVirtualizer.getVirtualItems();

@@ -256,7 +256,7 @@ export const SurplusModule: React.FC<SurplusModuleProps> = ({
     count: filteredItems.length,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => 52,
-    overscan: 10,
+    overscan: 25,
   });
 
   const virtualRows = rowVirtualizer.getVirtualItems();
